@@ -1,4 +1,5 @@
 # Projeto Rocket - Landing Page
+![Preview do Projeto](./1772818100077.jpg)
 
 Este é um projeto de desenvolvimento web focado na prática de **HTML5** e **CSS3**. O objetivo foi criar uma página de captura (landing page) moderna, aplicando conceitos de seletores, posicionamento e estilização visual.
 
