@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meu App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Meu App</h1>
+  <button onclick="saudacao()">Clique aqui</button>
+  <p id="mensagem"></p>
+
+  <script>
+    function saudacao() {
+      document.getElementById("mensagem").textContent = "Olá, mundo!";
+    }
+  </script>
+</body>
+</html>

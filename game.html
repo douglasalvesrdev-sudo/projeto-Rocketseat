@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON OVERDRIVE | Inovação 3D</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; }
+        #ui {
+            position: absolute; top: 20px; left: 20px; color: #0ff;
+            text-shadow: 0 0 10px #0ff; font-size: 24px; pointer-events: none;
+        }
+        #instructions {
+            position: absolute; bottom: 20px; width: 100%; text-align: center;
+            color: rgba(0, 255, 255, 0.5); font-size: 14px;
+        }
+        #game-over {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #f0f; text-align: center; display: none;
+        }
+        button {
+            background: transparent; border: 2px solid #f0f; color: #f0f;
+            padding: 10px 20px; cursor: pointer; font-size: 20px; transition: 0.3s;
+        }
+        button:hover { background: #f0f; color: #000; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">SCORE: <span id="score">0</span></div>
+    <div id="instructions">USE AS SETAS OU 'AD' PARA DESVIAR</div>
+    
+    <div id="game-over">
+        <h1>CRASH!</h1>
+        <button onclick="location.reload()">REINICIAR</button>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.module.min.js';
+
+        // Configurações Básicas
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000000, 0.05);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Luzes
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0x00ffff, 1, 100);
+        pointLight.position.set(0, 5, 5);
+        scene.add(pointLight);
+
+        // Criação do Chão (Grid Neon)
+        const gridHelper = new THREE.GridHelper(200, 50, 0xff00ff, 0x222222);
+        gridHelper.position.z = -50;
+        scene.add(gridHelper);
+
+        // Jogador (Nave)
+        const geometry = new THREE.ConeGeometry(0.5, 1.5, 3);
+        const material = new THREE.MeshPhongMaterial({ color: 0x00ffff, emissive: 0x00ffff });
+        const player = new THREE.Mesh(geometry, material);
+        player.rotation.x = Math.PI / 2;
+        player.position.y = 0.5;
+        scene.add(player);
+
+        camera.position.set(0, 3, 7);
+        camera.lookAt(player.position);
+
+        // Lógica de Obstáculos
+        const obstacles = [];
+        function createObstacle() {
+            const obsGeo = new THREE.BoxGeometry(2, 2, 2);
+            const obsMat = new THREE.MeshPhongMaterial({ color: 0xff00ff });
+            const obs = new THREE.Mesh(obsGeo, obsMat);
+            obs.position.z = -100;
+            obs.position.x = (Math.random() - 0.5) * 20;
+            scene.add(obs);
+            obstacles.push(obs);
+        }
+
+        // Controles
+        let moveLeft = false, moveRight = false;
+        document.addEventListener('keydown', (e) => {
+            if(e.key === 'ArrowLeft' || e.key === 'a') moveLeft = true;
+            if(e.key === 'ArrowRight' || e.key === 'd') moveRight = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            if(e.key === 'ArrowLeft' || e.key === 'a') moveLeft = false;
+            if(e.key === 'ArrowRight' || e.key === 'd') moveRight = false;
+        });
+
+        // Loop de Animação
+        let score = 0;
+        let speed = 0.5;
+        let frames = 0;
+        let isGameOver = false;
+
+        function animate() {
+            if(isGameOver) return;
+            requestAnimationFrame(animate);
+
+            frames++;
+            if(frames % 60 === 0) {
+                createObstacle();
+                score++;
+                document.getElementById('score').innerText = score;
+                speed += 0.005; // Aumento de dificuldade
+            }
+
+            // Movimento do Grid (Efeito de velocidade)
+            gridHelper.position.z += speed;
+            if(gridHelper.position.z > 50) gridHelper.position.z = 0;
+
+            // Movimento do Jogador
+            if(moveLeft && player.position.x > -10) player.position.x -= 0.2;
+            if(moveRight && player.position.x < 10) player.position.x += 0.2;
+            
+            // Suavização da câmera seguindo o player
+            camera.position.x = player.position.x * 0.5;
+
+            // Atualizar Obstáculos
+            obstacles.forEach((obs, index) => {
+                obs.position.z += speed;
+                
+                // Colisão simples
+                const dist = player.position.distanceTo(obs.position);
+                if(dist < 1.5) {
+                    isGameOver = true;
+                    document.getElementById('game-over').style.display = 'block';
+                }
+
+                if(obs.position.z > 10) {
+                    scene.remove(obs);
+                    obstacles.splice(index, 1);
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

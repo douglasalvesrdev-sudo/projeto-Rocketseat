@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>NEON OVERDRIVE: PIPAS OPS</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+        :root {
+            --neon-blue: #00f2ff;
+            --neon-pink: #ff0055;
+            --cyber-yellow: #f3e600;
+            --neon-green: #33ff00;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #050505;
+            color: #fff;
+            font-family: 'Share Tech Mono', monospace;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #game-wrapper {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0; left: 0;
+            background: #000;
+            cursor: crosshair;
+        }
+
+        /* ======= MENU ======= */
+        #ui-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .menu-screen {
+            position: absolute;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle at 15% 50%, rgba(0,0,0,0.95) 30%, rgba(0,0,0,0.5) 100%);
+            display: flex;
+            flex-direction: column;
+            padding: 4% 8%;
+            pointer-events: all;
+            border-left: 4px solid var(--neon-pink);
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(2rem, 5vw, 4.5rem);
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 12px;
+            color: var(--neon-blue);
+            filter: drop-shadow(0 0 15px var(--neon-blue));
+            line-height: 1;
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            color: var(--neon-pink);
+            letter-spacing: 4px;
+            margin: 8px 0 30px 0;
+            filter: drop-shadow(0 0 5px var(--neon-pink));
+        }
+
+        .section-label {
+            font-size: 0.7rem;
+            letter-spacing: 3px;
+            color: #888;
+            margin-bottom: 12px;
+        }
+
+        .car-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .car-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .car-card:hover {
+            background: rgba(0,242,255,0.08);
+            border-color: var(--neon-blue);
+            transform: translateY(-4px);
+        }
+
+        .car-card.active {
+            border: 2px solid var(--neon-pink);
+            background: rgba(255,0,85,0.08);
+            box-shadow: 0 0 20px rgba(255,0,85,0.2);
+        }
+
+        .car-card .icon { font-size: 1.8rem; }
+        .car-card h3 {
+            font-family: 'Orbitron', sans-serif;
+            margin: 6px 0 4px;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stats-mini { font-size: 0.6rem; color: #888; line-height: 1.6; }
+
+        .stat-line {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 2px;
+        }
+
+        .stat-mini-bar {
+            flex: 1;
+            height: 3px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .stat-mini-fill { height: 100%; background: var(--neon-blue); }
+
+        .btn-play {
+            margin-top: 30px;
+            padding: 18px 55px;
+            width: fit-content;
+            background: var(--cyber-yellow);
+            color: #000;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-play:hover {
+            background: #fff;
+            transform: scale(1.05);
+            filter: drop-shadow(0 0 15px var(--cyber-yellow));
+        }
+
+        .controls-hint {
+            margin-top: 15px;
+            font-size: 0.65rem;
+            color: #555;
+            letter-spacing: 2px;
+        }
+
+        .controls-hint span { color: #888; }
+
+        /* ======= HUD ======= */
+        #hud {
+            position: absolute;
+            bottom: 30px; left: 30px;
+            display: none;
+            border-left: 3px solid var(--neon-blue);
+            padding-left: 15px;
+            z-index: 200;
+        }
+
+        .hud-label { font-size: 0.65rem; color: var(--neon-blue); letter-spacing: 3px; margin-bottom: 4px; }
+
+        .stat-bar {
+            width: 220px;
+            height: 8px;
+            background: rgba(255,255,255,0.08);
+            margin-bottom: 12px;
+        }
+
+        .stat-fill {
+            height: 100%;
+            background: var(--neon-blue);
+            transition: width 0.15s;
+            box-shadow: 0 0 8px var(--neon-blue);
+        }
+
+        .stat-fill.danger { background: var(--neon-pink); box-shadow: 0 0 8px var(--neon-pink); }
+
+        #car-name-hud {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--cyber-yellow);
+            letter-spacing: 2px;
+        }
+
+        /* Score e kills */
+        #score-hud {
+            position: absolute;
+            top: 25px; right: 30px;
+            text-align: right;
+            z-index: 200;
+            display: none;
+        }
+
+        #score-hud .score-val {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            font-weight: 900;
+            color: var(--cyber-yellow);
+            filter: drop-shadow(0 0 8px var(--cyber-yellow));
+        }
+
+        #score-hud .score-label { font-size: 0.6rem; color: #666; letter-spacing: 3px; }
+
+        /* Kills */
+        #kills-hud {
+            position: absolute;
+            top: 25px; left: 30px;
+            z-index: 200;
+            display: none;
+            font-size: 0.7rem;
+            color: #666;
+            letter-spacing: 2px;
+        }
+
+        #kills-val {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            color: var(--neon-pink);
+            filter: drop-shadow(0 0 6px var(--neon-pink));
+        }
+
+        /* Controle conectado */
+        #gamepad-status {
+            position: absolute;
+            bottom: 30px; right: 30px;
+            z-index: 200;
+            font-size: 0.65rem;
+            color: #444;
+            letter-spacing: 2px;
+            display: none;
+        }
+
+        #gamepad-status.connected { color: var(--neon-green); filter: drop-shadow(0 0 5px var(--neon-green)); }
+
+        /* Game Over */
+        #game-over {
+            position: absolute;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+            pointer-events: all;
+        }
+
+        #game-over h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 4rem;
+            font-weight: 900;
+            color: var(--neon-pink);
+            filter: drop-shadow(0 0 20px var(--neon-pink));
+            letter-spacing: 8px;
+            animation: flicker 0.5s infinite;
+        }
+
+        @keyframes flicker {
+            0%,100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        #game-over .final-score {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            color: var(--cyber-yellow);
+            margin: 20px 0 40px;
+        }
+
+        #btn-restart {
+            padding: 15px 50px;
+            background: transparent;
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            letter-spacing: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        #btn-restart:hover {
+            background: var(--neon-blue);
+            color: #000;
+        }
+
+        /* Ammo */
+        #ammo-hud {
+            position: absolute;
+            bottom: 30px; right: 150px;
+            z-index: 200;
+            display: none;
+            text-align: right;
+        }
+
+        .ammo-dot {
+            display: inline-block;
+            width: 8px; height: 8px;
+            background: var(--cyber-yellow);
+            margin: 2px;
+            box-shadow: 0 0 5px var(--cyber-yellow);
+        }
+
+        .ammo-dot.empty { background: #333; box-shadow: none; }
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-overlay">
+        <!-- MENU PRINCIPAL -->
+        <div id="main-menu" class="menu-screen">
+            <h1>NEON OVERDRIVE</h1>
+            <div class="subtitle">◆ PROJECT: PIPAS OPS // V.2.0.26 ◆</div>
+
+            <div class="section-label">◈ SELECIONE SEU VEÍCULO DE COMBATE</div>
+            <div class="car-grid" id="carGrid"></div>
+
+            <div class="controls-hint" style="margin-top:20px;">
+                TECLADO: <span>WASD / SETAS = MOVER</span> &nbsp;|&nbsp; <span>ESPAÇO = ATIRAR</span> &nbsp;|&nbsp; <span>E = MINA</span><br>
+                CONTROLE XBOX: <span>ANALÓGICO ESQ = MOVER</span> &nbsp;|&nbsp; <span>RT = ATIRAR</span> &nbsp;|&nbsp; <span>LB = MINA</span>
+            </div>
+
+            <button class="btn-play" id="btnPlay">▶ INICIAR PROTOCOLO</button>
+        </div>
+
+        <!-- GAME OVER -->
+        <div id="game-over">
+            <h2>SISTEMA CRÍTICO</h2>
+            <div class="final-score" id="final-score-text">SCORE: 0</div>
+            <button id="btn-restart">↺ REINICIAR</button>
+        </div>
+    </div>
+
+    <!-- HUD IN-GAME -->
+    <div id="hud">
+        <div class="hud-label">INTEGRIDADE DO CHASSIS</div>
+        <div class="stat-bar"><div id="health-fill" class="stat-fill"></div></div>
+        <div id="car-name-hud">--</div>
+    </div>
+
+    <div id="score-hud">
+        <div class="score-label">SCORE</div>
+        <div class="score-val" id="score-val">0</div>
+    </div>
+
+    <div id="kills-hud">
+        <div style="font-size:0.6rem;letter-spacing:3px;color:#555;">DESTRUÍDOS</div>
+        <div id="kills-val">0</div>
+    </div>
+
+    <div id="ammo-hud">
+        <div style="font-size:0.6rem;letter-spacing:3px;color:#555;margin-bottom:4px;">MINAS</div>
+        <div id="ammo-dots"></div>
+    </div>
+
+    <div id="gamepad-status">🎮 CONTROLE: DESCONECTADO</div>
+</div>
+
+<script>
+'use strict';
+
+// ===================== CANVAS SETUP =====================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ===================== DADOS DOS CARROS =====================
+const CARS = [
+    { name: "NEON BLADE",        color: "#00f2ff", speed: 7,   accel: 0.25, hp: 100, weapon: "Laser",  icon: "🏎️" },
+    { name: "ONIBUS GHOST",      color: "#ff0055", speed: 4,   accel: 0.10, hp: 250, weapon: "Heavy",  icon: "🚌" },
+    { name: "NIGHT RIDER",       color: "#f3e600", speed: 6,   accel: 0.20, hp: 120, weapon: "Auto",   icon: "🚗" },
+    { name: "HEX TANK",          color: "#33ff00", speed: 3,   accel: 0.08, hp: 400, weapon: "Cannon", icon: "🚚" },
+    { name: "VOID RUNNER",       color: "#bc00ff", speed: 8,   accel: 0.30, hp: 80,  weapon: "Pulse",  icon: "🚀" },
+    { name: "POLICE INTERCEPT",  color: "#2244ff", speed: 6.5, accel: 0.22, hp: 140, weapon: "Sirene", icon: "🚓" },
+    { name: "SANDSTORM",         color: "#ff8800", speed: 5.5, accel: 0.18, hp: 160, weapon: "Rocket", icon: "🚜" },
+    { name: "MOTO-CYBER",        color: "#ff00ff", speed: 9,   accel: 0.40, hp: 60,  weapon: "Blade",  icon: "🏍️" },
+    { name: "DRONE CAR",         color: "#00ffcc", speed: 5,   accel: 0.20, hp: 110, weapon: "EMP",    icon: "🛸" },
+    { name: "WASTE LANDER",      color: "#aaaaaa", speed: 4.5, accel: 0.12, hp: 200, weapon: "Saw",    icon: "🚐" }
+];
+
+// ===================== ESTADO DO JOGO =====================
+let selectedIdx = 0;
+let gameState = 'MENU';
+let player = null;
+let enemies = [];
+let projectiles = [];
+let mines = [];
+let particles = [];
+let rainDrops = [];
+let score = 0;
+let kills = 0;
+let maxMines = 10;
+let minesAvailable = maxMines;
+let frameCount = 0;
+let animId = null;
+
+// ===================== INICIALIZAÇÃO DO MENU =====================
+const carGrid = document.getElementById('carGrid');
+
+function initMenu() {
+    carGrid.innerHTML = '';
+    CARS.forEach((car, i) => {
+        const card = document.createElement('div');
+        card.className = `car-card ${i === 0 ? 'active' : ''}`;
+        card.onclick = () => {
+            document.querySelectorAll('.car-card').forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            selectedIdx = i;
+        };
+
+        const spdPct = (car.speed / 9) * 100;
+        const hpPct  = (car.hp / 400) * 100;
+
+        card.innerHTML = `
+            <div class="icon">${car.icon}</div>
+            <h3>${car.name}</h3>
+            <div class="stats-mini">
+                <div class="stat-line">SPD <div class="stat-mini-bar"><div class="stat-mini-fill" style="width:${spdPct}%;background:${car.color}"></div></div></div>
+                <div class="stat-line">HP  <div class="stat-mini-bar"><div class="stat-mini-fill" style="width:${hpPct}%;background:${car.color}"></div></div></div>
+                ${car.weapon}
+            </div>
+        `;
+        carGrid.appendChild(card);
+    });
+}
+
+document.getElementById('btnPlay').addEventListener('click', startGame);
+document.getElementById('btn-restart').addEventListener('click', () => location.reload());
+
+// ===================== CHUVA =====================
+function initRain() {
+    rainDrops = [];
+    for (let i = 0; i < 200; i++) {
+        rainDrops.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            l: Math.random() * 25 + 5,
+            s: Math.random() * 8 + 8
+        });
+    }
+}
+
+function drawRain() {
+    ctx.strokeStyle = 'rgba(174,194,224,0.15)';
+    ctx.lineWidth = 0.8;
+    rainDrops.forEach(d => {
+        ctx.beginPath();
+        ctx.moveTo(d.x, d.y);
+        ctx.lineTo(d.x + d.l * 0.15, d.y + d.l);
+        ctx.stroke();
+        d.y += d.s;
+        d.x += d.s * 0.1;
+        if (d.y > canvas.height) {
+            d.y = -20;
+            d.x = Math.random() * canvas.width;
+        }
+    });
+}
+
+// ===================== GRID ISOMÉTRICO =====================
+function drawGrid() {
+    ctx.strokeStyle = 'rgba(0,242,255,0.04)';
+    ctx.lineWidth = 1;
+    const step = 80;
+    const ox = canvas.width / 2;
+    const oy = canvas.height / 4;
+    const cam = player ? { x: player.x, y: player.y } : { x: 0, y: 0 };
+
+    for (let gx = -1500; gx < 1500; gx += step) {
+        for (let gy = -1500; gy < 1500; gy += step) {
+            const iso1 = worldToScreen(gx, gy, cam, ox, oy);
+            const iso2 = worldToScreen(gx + step, gy, cam, ox, oy);
+            const iso3 = worldToScreen(gx, gy + step, cam, ox, oy);
+            ctx.beginPath(); ctx.moveTo(iso1.x, iso1.y); ctx.lineTo(iso2.x, iso2.y); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(iso1.x, iso1.y); ctx.lineTo(iso3.x, iso3.y); ctx.stroke();
+        }
+    }
+}
+
+function worldToScreen(wx, wy, cam, ox, oy) {
+    const rx = wx - cam.x;
+    const ry = wy - cam.y;
+    return {
+        x: (rx - ry) + ox,
+        y: (rx + ry) / 2 + oy
+    };
+}
+
+// ===================== CLASSE ENTIDADE =====================
+class Entity {
+    constructor(x, y, config) {
+        this.x = x;
+        this.y = y;
+        this.vx = 0;
+        this.vy = 0;
+        this.angle = 0;
+        this.config = config;
+        this.hp = config.hp;
+        this.maxHp = config.hp;
+        this.lastShot = 0;
+        this.hitFlash = 0;
+    }
+
+    getIsoPos(cam, ox, oy) {
+        return worldToScreen(this.x, this.y, cam, ox, oy);
+    }
+
+    draw(cam, ox, oy) {
+        const iso = this.getIsoPos(cam, ox, oy);
+        ctx.save();
+        ctx.translate(iso.x, iso.y);
+
+        // Sombra
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.scale(1, 0.4);
+        ctx.beginPath();
+        ctx.ellipse(0, 18, 20, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.scale(1, 2.5);
+
+        ctx.rotate(this.angle);
+
+        const flash = this.hitFlash > 0;
+
+        // Corpo do carro
+        ctx.shadowBlur = flash ? 25 : 12;
+        ctx.shadowColor = flash ? '#fff' : this.config.color;
+        ctx.fillStyle = flash ? '#fff' : this.config.color;
+        ctx.fillRect(-16, -9, 32, 18);
+
+        // Detalhes
+        ctx.fillStyle = flash ? this.config.color : 'rgba(0,0,0,0.5)';
+        ctx.fillRect(8, -7, 6, 14); // Para-brisa
+
+        // Rodas
+        ctx.fillStyle = '#111';
+        ctx.fillRect(-18, -11, 6, 5);
+        ctx.fillRect(-18, 6, 6, 5);
+        ctx.fillRect(12, -11, 6, 5);
+        ctx.fillRect(12, 6, 6, 5);
+
+        if (this.hitFlash > 0) this.hitFlash--;
+
+        ctx.restore();
+
+        // Barra de vida (só inimigos)
+        if (this !== player && this.hp < this.maxHp) {
+            const bw = 40;
+            const bh = 4;
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.fillRect(iso.x - bw/2, iso.y - 30, bw, bh);
+            ctx.fillStyle = this.hp > this.maxHp * 0.5 ? '#33ff00' : '#ff0055';
+            ctx.fillRect(iso.x - bw/2, iso.y - 30, bw * (this.hp / this.maxHp), bh);
+        }
+    }
+}
+
+// ===================== IA TÁTICA =====================
+function updateAI(enemy, cam, ox, oy) {
+    const dist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+
+    const targetAngle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+    let diff = targetAngle - enemy.angle;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    enemy.angle += diff * 0.06;
+
+    if (dist > 130) {
+        enemy.vx += Math.cos(enemy.angle) * enemy.config.accel * 0.7;
+        enemy.vy += Math.sin(enemy.angle) * enemy.config.accel * 0.7;
+    } else if (dist < 80) {
+        // Recua um pouco
+        enemy.vx -= Math.cos(enemy.angle) * enemy.config.accel * 0.4;
+        enemy.vy -= Math.sin(enemy.angle) * enemy.config.accel * 0.4;
+    }
+
+    if (dist < 450 && Math.abs(diff) < 0.25) fireWeapon(enemy);
+
+    // Desvio de minas
+    mines.forEach(m => {
+        const dMine = Math.hypot(m.x - enemy.x, m.y - enemy.y);
+        if (dMine < 120) enemy.angle += 0.15;
+    });
+
+    enemy.draw(cam, ox, oy);
+}
+
+// ===================== DISPARAR =====================
+function fireWeapon(ent) {
+    const now = Date.now();
+    const cd = ent === player ? 250 : 500;
+    if (now - ent.lastShot > cd) {
+        projectiles.push({
+            x: ent.x + Math.cos(ent.angle) * 20,
+            y: ent.y + Math.sin(ent.angle) * 20,
+            vx: Math.cos(ent.angle) * 14,
+            vy: Math.sin(ent.angle) * 14,
+            owner: ent,
+            life: 90,
+            color: ent === player ? ent.config.color : '#ff4444'
+        });
+        ent.lastShot = now;
+    }
+}
+
+// ===================== PARTÍCULAS =====================
+function createExplosion(wx, wy, color = '#ff6600') {
+    for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * Math.PI * 2;
+        const sp = Math.random() * 4 + 1;
+        particles.push({
+            x: wx, y: wy,
+            vx: Math.cos(a) * sp,
+            vy: Math.sin(a) * sp,
+            life: 40 + Math.random() * 20,
+            maxLife: 60,
+            color: color,
+            size: Math.random() * 5 + 2
+        });
+    }
+}
+
+function updateParticles(cam, ox, oy) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vx *= 0.92;
+        p.vy *= 0.92;
+        p.life--;
+
+        const iso = worldToScreen(p.x, p.y, cam, ox, oy);
+        const alpha = p.life / p.maxLife;
+
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(iso.x, iso.y, p.size * alpha, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+}
+
+// ===================== CONTROLES =====================
+const keys = {};
+window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    // E para colocar mina
+    if (e.code === 'KeyE' && gameState === 'PLAYING') dropMine();
+    // Tiro contínuo no espaço tratado no loop
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ===================== GAMEPAD =====================
+const gamepadStatus = document.getElementById('gamepad-status');
+gamepadStatus.style.display = 'block';
+
+let gamepadConnected = false;
+
+window.addEventListener('gamepadconnected', e => {
+    gamepadConnected = true;
+    gamepadStatus.textContent = `🎮 CONTROLE: ${e.gamepad.id.substring(0, 20).toUpperCase()}`;
+    gamepadStatus.classList.add('connected');
+});
+
+window.addEventListener('gamepaddisconnected', () => {
+    gamepadConnected = false;
+    gamepadStatus.textContent = '🎮 CONTROLE: DESCONECTADO';
+    gamepadStatus.classList.remove('connected');
+});
+
+function readGamepad() {
+    const gpList = navigator.getGamepads ? navigator.getGamepads() : [];
+    for (let i = 0; i < gpList.length; i++) {
+        const gp = gpList[i];
+        if (!gp || !gp.connected) continue;
+
+        // Analógico esquerdo: movimento
+        const axX = gp.axes[0]; // -1 a 1
+        const axY = gp.axes[1]; // -1 a 1
+        const deadzone = 0.15;
+
+        if (Math.abs(axX) > deadzone || Math.abs(axY) > deadzone) {
+            const targetAngle = Math.atan2(axY, axX);
+            let diff = targetAngle - player.angle;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            player.angle += diff * 0.12;
+
+            const mag = Math.min(1, Math.hypot(axX, axY));
+            player.vx += Math.cos(player.angle) * player.config.accel * mag;
+            player.vy += Math.sin(player.angle) * player.config.accel * mag;
+        }
+
+        // Analógico direito: mirar (opcional)
+        const raxX = gp.axes[2];
+        const raxY = gp.axes[3];
+        if (Math.abs(raxX) > deadzone || Math.abs(raxY) > deadzone) {
+            player.angle = Math.atan2(raxY, raxX);
+        }
+
+        // RT (botão 7) = atirar
+        if (gp.buttons[7] && gp.buttons[7].pressed) fireWeapon(player);
+
+        // RB (botão 5) = atirar também
+        if (gp.buttons[5] && gp.buttons[5].pressed) fireWeapon(player);
+
+        // LB (botão 4) = colocar mina (com debounce)
+        if (gp.buttons[4] && gp.buttons[4].pressed && !gp._lbPrev) dropMine();
+        if (gp.buttons[4]) gp._lbPrev = gp.buttons[4].pressed;
+
+        // B (botão 1) = atirar também
+        if (gp.buttons[1] && gp.buttons[1].pressed) fireWeapon(player);
+
+        // Botão A (0) = atirar
+        if (gp.buttons[0] && gp.buttons[0].pressed) fireWeapon(player);
+
+        break; // usa só o primeiro gamepad
+    }
+}
+
+// ===================== MINAS =====================
+function dropMine() {
+    if (minesAvailable <= 0) return;
+    mines.push({
+        x: player.x,
+        y: player.y,
+        active: true,
+        placed: Date.now()
+    });
+    minesAvailable--;
+    updateAmmoHUD();
+}
+
+function updateAmmoHUD() {
+    const dots = document.getElementById('ammo-dots');
+    dots.innerHTML = '';
+    for (let i = 0; i < maxMines; i++) {
+        const d = document.createElement('span');
+        d.className = 'ammo-dot' + (i < minesAvailable ? '' : ' empty');
+        dots.appendChild(d);
+    }
+}
+
+// ===================== INICIAR JOGO =====================
+function startGame() {
+    score = 0;
+    kills = 0;
+    minesAvailable = maxMines;
+
+    document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('hud').style.display = 'block';
+    document.getElementById('score-hud').style.display = 'block';
+    document.getElementById('kills-hud').style.display = 'block';
+    document.getElementById('ammo-hud').style.display = 'block';
+
+    player = new Entity(0, 0, CARS[selectedIdx]);
+    document.getElementById('car-name-hud').textContent = player.config.name;
+
+    enemies = [];
+    for (let i = 0; i < 7; i++) {
+        const ex = (Math.random() - 0.5) * 1200;
+        const ey = (Math.random() - 0.5) * 1200;
+        enemies.push(new Entity(ex, ey, CARS[Math.floor(Math.random() * CARS.length)]));
+    }
+
+    mines = [];
+    particles = [];
+    projectiles = [];
+
+    initRain();
+    updateAmmoHUD();
+
+    gameState = 'PLAYING';
+    if (animId) cancelAnimationFrame(animId);
+    gameLoop();
+}
+
+// ===================== GAME OVER =====================
+function triggerGameOver() {
+    gameState = 'GAMEOVER';
+    document.getElementById('final-score-text').textContent = `SCORE: ${score}  |  DESTRUÍDOS: ${kills}`;
+    document.getElementById('game-over').style.display = 'flex';
+    createExplosion(player.x, player.y, player.config.color);
+    createExplosion(player.x, player.y, '#ff6600');
+}
+
+// ===================== LOOP PRINCIPAL =====================
+function gameLoop() {
+    frameCount++;
+
+    ctx.fillStyle = '#030305';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (gameState !== 'PLAYING' && gameState !== 'GAMEOVER') return;
+
+    const cam = { x: player.x, y: player.y };
+    const ox = canvas.width / 2;
+    const oy = canvas.height / 2.2;
+
+    drawGrid();
+    drawRain();
+
+    // ---- INPUT TECLADO ----
+    if (gameState === 'PLAYING') {
+        readGamepad();
+
+        if (keys['KeyW'] || keys['ArrowUp']) {
+            player.vx += Math.cos(player.angle) * player.config.accel;
+            player.vy += Math.sin(player.angle) * player.config.accel;
+        }
+        if (keys['KeyS'] || keys['ArrowDown']) {
+            player.vx -= Math.cos(player.angle) * player.config.accel * 0.5;
+            player.vy -= Math.sin(player.angle) * player.config.accel * 0.5;
+        }
+        if (keys['KeyA'] || keys['ArrowLeft']) player.angle -= 0.045;
+        if (keys['KeyD'] || keys['ArrowRight']) player.angle += 0.045;
+        if (keys['Space']) fireWeapon(player);
+    }
+
+    // ---- ATUALIZAR PLAYER ----
+    if (gameState === 'PLAYING' || gameState === 'GAMEOVER') {
+        const maxSpeed = player.config.speed;
+        const spd = Math.hypot(player.vx, player.vy);
+        if (spd > maxSpeed) {
+            player.vx = (player.vx / spd) * maxSpeed;
+            player.vy = (player.vy / spd) * maxSpeed;
+        }
+        player.x += player.vx;
+        player.y += player.vy;
+        player.vx *= 0.94;
+        player.vy *= 0.94;
+        player.draw(cam, ox, oy);
+    }
+
+    // ---- ATUALIZAR INIMIGOS ----
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const enemy = enemies[i];
+        const maxSpd = enemy.config.speed;
+        const spd = Math.hypot(enemy.vx, enemy.vy);
+        if (spd > maxSpd) {
+            enemy.vx = (enemy.vx / spd) * maxSpd;
+            enemy.vy = (enemy.vy / spd) * maxSpd;
+        }
+        enemy.x += enemy.vx;
+        enemy.y += enemy.vy;
+        enemy.vx *= 0.94;
+        enemy.vy *= 0.94;
+        if (gameState === 'PLAYING') updateAI(enemy, cam, ox, oy);
+        else enemy.draw(cam, ox, oy);
+    }
+
+    // ---- MINAS ----
+    for (let i = mines.length - 1; i >= 0; i--) {
+        const m = mines[i];
+        if (!m.active) continue;
+
+        const delay = Date.now() - m.placed;
+        const armed = delay > 1000; // 1s para armar
+
+        const iso = worldToScreen(m.x, m.y, cam, ox, oy);
+
+        // Desenhar mina
+        const blink = frameCount % 30 < 15;
+        ctx.beginPath();
+        ctx.arc(iso.x, iso.y, 7, 0, Math.PI * 2);
+        ctx.fillStyle = armed ? (blink ? '#ff0000' : '#660000') : '#888';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        if (!armed) continue;
+
+        // Colisão mina × player
+        const dp = Math.hypot(player.x - m.x, player.y - m.y);
+        if (dp < 35) {
+            player.hp -= 35;
+            player.hitFlash = 8;
+            createExplosion(m.x, m.y, '#ff6600');
+            m.active = false;
+            mines.splice(i, 1);
+            continue;
+        }
+
+        // Colisão mina × inimigos
+        for (let j = enemies.length - 1; j >= 0; j--) {
+            const de = Math.hypot(enemies[j].x - m.x, enemies[j].y - m.y);
+            if (de < 35) {
+                enemies[j].hp -= 60;
+                enemies[j].hitFlash = 8;
+                createExplosion(m.x, m.y, '#ff6600');
+                m.active = false;
+                mines.splice(i, 1);
+                if (enemies[j].hp <= 0) {
+                    createExplosion(enemies[j].x, enemies[j].y, enemies[j].config.color);
+                    score += 200;
+                    kills++;
+                    enemies.splice(j, 1);
+                }
+                break;
+            }
+        }
+    }
+
+    // ---- PROJÉTEIS ----
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+        const p = projectiles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life--;
+
+        const iso = worldToScreen(p.x, p.y, cam, ox, oy);
+
+        // Trilha
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = p.color;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(iso.x - 3, iso.y - 3, 6, 6);
+        ctx.shadowBlur = 0;
+
+        if (p.life <= 0) {
+            projectiles.splice(i, 1);
+            continue;
+        }
+
+        // Dano ao player por projéteis inimigos
+        if (p.owner !== player) {
+            const dpl = Math.hypot(p.x - player.x, p.y - player.y);
+            if (dpl < 28) {
+                player.hp -= 10;
+                player.hitFlash = 6;
+                createExplosion(p.x, p.y, '#ff4444');
+                projectiles.splice(i, 1);
+                continue;
+            }
+        }
+
+        // Dano a inimigos por projéteis do player
+        if (p.owner === player) {
+            let hit = false;
+            for (let j = enemies.length - 1; j >= 0; j--) {
+                const de = Math.hypot(p.x - enemies[j].x, p.y - enemies[j].y);
+                if (de < 28) {
+                    enemies[j].hp -= 20;
+                    enemies[j].hitFlash = 6;
+                    createExplosion(p.x, p.y, enemies[j].config.color);
+                    projectiles.splice(i, 1);
+                    hit = true;
+                    score += 10;
+                    if (enemies[j].hp <= 0) {
+                        createExplosion(enemies[j].x, enemies[j].y, enemies[j].config.color);
+                        score += 150;
+                        kills++;
+                        enemies.splice(j, 1);
+                        // Spawn novo inimigo gradual
+                        if (enemies.length < 5) {
+                            setTimeout(() => {
+                                const ex = player.x + (Math.random() - 0.5) * 1400;
+                                const ey = player.y + (Math.random() - 0.5) * 1400;
+                                enemies.push(new Entity(ex, ey, CARS[Math.floor(Math.random() * CARS.length)]));
+                            }, 3000);
+                        }
+                    }
+                    break;
+                }
+            }
+            if (hit) continue;
+        }
+    }
+
+    // ---- PARTÍCULAS ----
+    updateParticles(cam, ox, oy);
+
+    // ---- ATUALIZAR HUD ----
+    if (gameState === 'PLAYING') {
+        const hpPct = Math.max(0, (player.hp / player.maxHp) * 100);
+        const fill = document.getElementById('health-fill');
+        fill.style.width = hpPct + '%';
+        fill.className = 'stat-fill' + (hpPct < 30 ? ' danger' : '');
+        document.getElementById('score-val').textContent = score.toString().padStart(6, '0');
+        document.getElementById('kills-val').textContent = kills;
+    }
+
+    // ---- GAME OVER ----
+    if (gameState === 'PLAYING' && player.hp <= 0) {
+        triggerGameOver();
+    }
+
+    animId = requestAnimationFrame(gameLoop);
+}
+
+// ===================== INICIALIZAR =====================
+initMenu();
+</script>
+</body>
+</html>

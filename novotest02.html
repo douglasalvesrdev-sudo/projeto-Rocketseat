@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O Velho do Oeste - Puzzle Game</title>
+    <style>
+        :root {
+            --primary: #5d3a1a;
+            --accent: #e3c18d;
+            --bg: #1a1a1a;
+            --text: #ffffff;
+        }
+
+        body { 
+            text-align: center; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg); 
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        h2 { color: var(--accent); letter-spacing: 2px; }
+
+        /* Controles */
+        .controls { 
+            margin-bottom: 20px; 
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: var(--accent);
+            background: var(--primary);
+            border: 2px solid var(--accent);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn:hover { background: var(--accent); color: var(--primary); }
+
+        #fileInput { display: none; }
+
+        /* Área do Jogo */
+        #canvas-container { 
+            margin: 20px auto; 
+            position: relative; 
+            display: inline-block;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            border: 5px solid var(--primary);
+        }
+
+        canvas { 
+            background: #222; 
+            cursor: grab;
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        canvas:active { cursor: grabbing; }
+
+        .status { margin-top: 10px; color: #888; font-style: italic; }
+
+        /* TELA DE CRÉDITOS (OVERLAY) */
+        .credits-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .credits-content {
+            background: var(--accent);
+            padding: 40px;
+            border: 8px double var(--primary);
+            width: 85%;
+            max-width: 500px;
+            text-align: center;
+            color: var(--primary);
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            animation: slideUp 0.8s ease-out;
+        }
+
+        .west-title {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 10px;
+        }
+
+        .section { margin-bottom: 20px; }
+        .label { font-size: 0.75rem; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; }
+        .name { font-size: 1.6rem; font-weight: bold; margin: 0; }
+        .tech-list { list-style: none; padding: 0; font-style: italic; margin-top: 5px; }
+
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <h2>O VELHO DO OESTE</h2>
+    
+    <div class="controls">
+        <input type="file" id="fileInput" accept="image/*">
+        <button class="btn" onclick="document.getElementById('fileInput').click()">📁 Carregar Foto</button>
+        <button class="btn" onclick="embaralhar()">🔀 Embaralhar</button>
+        <button class="btn" onclick="mostrarCreditos()">📜 Créditos</button>
+    </div>
+
+    <p class="status">Progresso: <span id="counter">0</span> / 40 peças</p>
+
+    <div id="canvas-container">
+        <canvas id="puzzleCanvas"></canvas>
+    </div>
+
+    <div id="credits-screen" class="credits-overlay">
+        <div class="credits-content">
+            <h1 class="west-title">O VELHO DO OESTE</h1>
+            
+            <div class="section">
+                <p class="label">Criado e Desenvolvido por</p>
+                <p class="name">Douglas Alves Ribeiro</p>
+            </div>
+
+            <div class="section">
+                <p class="label">Tecnologias de Estudo</p>
+                <ul class="tech-list">
+                    <li>Visual Studio Code</li>
+                    <li>CSS3 Moderno</li>
+                    <li>JavaScript Vanilla (ES6+)</li>
+                    <li>HTML5 Canvas API</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <p class="label">Jornada</p>
+                <small>Projeto realizado durante a imersão front-end para prática de lógica de programação e manipulação de imagens.</small>
+            </div>
+
+            <button class="btn" onclick="fecharCreditos()">VOLTAR AO JOGO</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('puzzleCanvas');
+        const ctx = canvas.getContext('2d');
+        const fileInput = document.getElementById('fileInput');
+        const counterEl = document.getElementById('counter');
+        
+        const img = new Image();
+        const cols = 8;
+        const rows = 5;
+        let pieceWidth, pieceHeight;
+        let pieces = [];
+        let selectedPiece = null;
+        let offset = { x: 0, y: 0 };
+
+        // Inicialização
+        img.src = 'https://picsum.photos/800/500'; // Imagem inicial
+        img.onload = () => setupGame();
+
+        function setupGame() {
+            const maxWidth = 800;
+            const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            pieceWidth = canvas.width / cols;
+            pieceHeight = canvas.height / rows;
+            initPieces();
+            desenhar();
+        }
+
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => img.src = ev.target.result;
+                reader.readAsDataURL(file);
+            }
+        };
+
+        function initPieces() {
+            pieces = [];
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    pieces.push({
+                        sx: (c * img.width) / cols,
+                        sy: (r * img.height) / rows,
+                        sw: img.width / cols,
+                        sh: img.height / rows,
+                        x: c * pieceWidth,
+                        y: r * pieceHeight,
+                        correctX: c * pieceWidth,
+                        correctY: r * pieceHeight,
+                        isLocked: false
+                    });
+                }
+            }
+            updateCounter();
+        }
+
+        function embaralhar() {
+            pieces.forEach(p => {
+                p.x = Math.random() * (canvas.width - pieceWidth);
+                p.y = Math.random() * (canvas.height - pieceHeight);
+                p.isLocked = false;
+            });
+            updateCounter();
+            desenhar();
+        }
+
+        function desenhar() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 0.15;
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 1.0;
+
+            pieces.forEach(p => {
+                ctx.save();
+                if (p === selectedPiece) {
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = "black";
+                }
+                ctx.beginPath();
+                ctx.rect(p.x, p.y, pieceWidth, pieceHeight);
+                ctx.clip();
+                ctx.drawImage(img, p.sx, p.sy, p.sw, p.sh, p.x, p.y, pieceWidth, pieceHeight);
+                ctx.strokeStyle = p.isLocked ? "rgba(227, 193, 141, 0.8)" : "rgba(255,255,255,0.2)";
+                ctx.strokeRect(p.x, p.y, pieceWidth, pieceHeight);
+                ctx.restore();
+            });
+        }
+
+        // Interação
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const cx = e.touches ? e.touches[0].clientX : e.clientX;
+            const cy = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: (cx - rect.left) * (canvas.width / rect.width),
+                y: (cy - rect.top) * (canvas.height / rect.height)
+            };
+        }
+
+        function start(e) {
+            const pos = getPos(e);
+            for (let i = pieces.length - 1; i >= 0; i--) {
+                const p = pieces[i];
+                if (!p.isLocked && pos.x > p.x && pos.x < p.x + pieceWidth && pos.y > p.y && pos.y < p.y + pieceHeight) {
+                    selectedPiece = p;
+                    offset = { x: pos.x - p.x, y: pos.y - p.y };
+                    pieces.splice(i, 1);
+                    pieces.push(selectedPiece);
+                    break;
+                }
+            }
+        }
+
+        function move(e) {
+            if (!selectedPiece) return;
+            if (e.cancelable) e.preventDefault();
+            const pos = getPos(e);
+            selectedPiece.x = pos.x - offset.x;
+            selectedPiece.y = pos.y - offset.y;
+            desenhar();
+        }
+
+        function end() {
+            if (selectedPiece) {
+                if (Math.abs(selectedPiece.x - selectedPiece.correctX) < 25 && 
+                    Math.abs(selectedPiece.y - selectedPiece.correctY) < 25) {
+                    selectedPiece.x = selectedPiece.correctX;
+                    selectedPiece.y = selectedPiece.correctY;
+                    selectedPiece.isLocked = true;
+                    updateCounter();
+                    if (pieces.every(p => p.isLocked)) {
+                        setTimeout(() => mostrarCreditos(), 500);
+                    }
+                }
+            }
+            selectedPiece = null;
+            desenhar();
+        }
+
+        function updateCounter() {
+            counterEl.innerText = pieces.filter(p => p.isLocked).length;
+        }
+
+        function mostrarCreditos() { document.getElementById('credits-screen').style.display = 'flex'; }
+        function fecharCreditos() { document.getElementById('credits-screen').style.display = 'none'; }
+
+        canvas.addEventListener('mousedown', start);
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', end);
+        canvas.addEventListener('touchstart', start, {passive: false});
+        window.addEventListener('touchmove', move, {passive: false});
+        window.addEventListener('touchend', end);
+    </script>
+</body>
+</html>

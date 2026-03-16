@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>Cyberpunk Invaders</title>
+
+<style>
+body{
+background:#e2e2f0;
+color:#0ff;
+font-family:monospace;
+text-align:center;
+margin:0;
+overflow:hidden;
+}
+
+h1{
+color:#ff00ff;
+text-shadow:0 0 20px #ff00ff;
+}
+
+#menu{
+position:absolute;
+top:40%;
+left:50%;
+transform:translate(-50%,-50%);
+}
+
+button{
+background:black;
+border:2px solid #0ff;
+color:#0ff;
+padding:10px 20px;
+margin:10px;
+font-size:18px;
+cursor:pointer;
+}
+
+button:hover{
+background:#0ff;
+color:black;
+}
+
+canvas{
+background:linear-gradient(#02020a,#090920);
+display:none;
+margin:auto;
+border:3px solid #0ff;
+box-shadow:0 0 30px #0ff;
+}
+
+#hud{
+position:absolute;
+top:10px;
+left:10px;
+font-size:18px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>CYBERPUNK INVADERS</h1>
+
+<div id="menu">
+<p>Escolha seu personagem</p>
+<button onclick="startGame('drone')">Drone Hacker</button>
+<button onclick="startGame('merc')">Mercenário Neon</button>
+</div>
+
+<div id="hud"></div>
+
+<canvas id="game" width="800" height="600"></canvas>
+
+<script>
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let player;
+let bullets=[];
+let enemies=[];
+let score=0;
+let level=1;
+let gamepadIndex=null;
+
+class Player{
+
+constructor(type){
+
+this.x=380;
+this.y=540;
+this.speed=6;
+this.type=type;
+
+}
+
+draw(){
+
+ctx.fillStyle = this.type=="drone" ? "#00ffff" : "#ff00ff";
+
+ctx.fillRect(this.x,this.y,40,20);
+
+}
+
+move(dir){
+
+this.x += dir*this.speed;
+
+}
+
+shoot(){
+
+bullets.push({x:this.x+18,y:this.y});
+
+}
+
+}
+
+function spawnEnemies(){
+
+enemies=[];
+
+for(let i=0;i<5+level;i++){
+
+enemies.push({
+
+x:60+i*120,
+y:40,
+speed:1+level*0.5
+
+});
+
+}
+
+}
+
+function drawEnemies(){
+
+ctx.fillStyle="#ff0044";
+
+enemies.forEach(e=>{
+ctx.fillRect(e.x,e.y,30,20);
+});
+
+}
+
+function updateEnemies(){
+
+enemies.forEach(e=>{
+
+e.y+=0.05*level;
+
+if(e.y>600){
+alert("Game Over!");
+location.reload();
+}
+
+});
+
+}
+
+function drawBullets(){
+
+ctx.fillStyle="#0f0";
+
+bullets.forEach(b=>{
+ctx.fillRect(b.x,b.y,4,10);
+});
+
+}
+
+function updateBullets(){
+
+bullets.forEach((b,i)=>{
+
+b.y-=8;
+
+enemies.forEach((e,j)=>{
+
+if(b.x>e.x && b.x<e.x+30 && b.y<e.y+20){
+
+enemies.splice(j,1);
+bullets.splice(i,1);
+score+=10;
+
+}
+
+});
+
+});
+
+}
+
+function drawHUD(){
+
+document.getElementById("hud").innerHTML =
+"Score: "+score+" | Fase: "+level;
+
+}
+
+function nextLevel(){
+
+if(enemies.length==0){
+
+level++;
+
+if(level>5){
+
+alert("VOCÊ VENCEU!");
+location.reload();
+
+}
+
+spawnEnemies();
+
+}
+
+}
+
+function updateGamepad(){
+
+const gp = navigator.getGamepads()[gamepadIndex];
+
+if(!gp) return;
+
+let axis = gp.axes[0];
+
+if(axis<-0.2) player.move(-1);
+if(axis>0.2) player.move(1);
+
+if(gp.buttons[0].pressed){
+
+player.shoot();
+
+}
+
+}
+
+function loop(){
+
+ctx.clearRect(0,0,800,600);
+
+updateGamepad();
+
+player.draw();
+
+drawEnemies();
+updateEnemies();
+
+drawBullets();
+updateBullets();
+
+drawHUD();
+
+nextLevel();
+
+requestAnimationFrame(loop);
+
+}
+
+document.addEventListener("keydown",e=>{
+
+if(e.key=="ArrowLeft") player.move(-1);
+if(e.key=="ArrowRight") player.move(1);
+if(e.key==" ") player.shoot();
+
+});
+
+window.addEventListener("gamepadconnected",e=>{
+
+gamepadIndex = e.gamepad.index;
+
+});
+
+function startGame(type){
+
+document.getElementById("menu").style.display="none";
+
+canvas.style.display="block";
+
+player = new Player(type);
+
+spawnEnemies();
+
+loop();
+
+}
+
+</script>
+
+</body>
+</html>

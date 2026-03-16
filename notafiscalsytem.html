@@ -1,0 +1,1851 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContaFácil — Gestão de Notas Fiscais</title>
+<link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   TOKENS & RESET
+═══════════════════════════════════════════ */
+:root {
+  --bg:        #0f1117;
+  --surface:   #181c27;
+  --surface2:  #1e2333;
+  --border:    rgba(255,255,255,0.07);
+  --border2:   rgba(255,255,255,0.13);
+  --text:      #e8eaf0;
+  --muted:     #7a849a;
+  --accent:    #4f8ef7;
+  --accent-s:  rgba(79,142,247,0.12);
+  --green:     #22c55e;
+  --green-s:   rgba(34,197,94,0.12);
+  --red:       #ef4444;
+  --red-s:     rgba(239,68,68,0.12);
+  --yellow:    #f59e0b;
+  --yellow-s:  rgba(245,158,11,0.12);
+  --purple:    #a78bfa;
+  --purple-s:  rgba(167,139,250,0.12);
+  --sidebar:   220px;
+  --radius:    12px;
+  --shadow:    0 4px 24px rgba(0,0,0,0.4);
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { font-size:14px; }
+body {
+  font-family:'Albert Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  overflow: hidden;
+}
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+button { font-family:inherit; cursor:pointer; }
+input, select, textarea { font-family:inherit; }
+
+/* ═══════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════ */
+#sidebar {
+  width: var(--sidebar);
+  min-height: 100vh;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  z-index: 100;
+  transition: transform .3s;
+}
+.sidebar-logo {
+  padding: 22px 20px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-icon {
+  width: 34px; height: 34px;
+  background: var(--accent);
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+  box-shadow: 0 0 0 4px var(--accent-s);
+}
+.logo-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 17px; font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+.logo-name span { color: var(--accent); }
+
+.sidebar-section { padding: 16px 12px 6px; }
+.sidebar-section-lbl {
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--muted); padding: 0 8px; margin-bottom: 6px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 9px;
+  font-size: 13px; font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  margin-bottom: 2px;
+  border: none; background: none; width: 100%; text-align: left;
+}
+.nav-item svg { flex-shrink: 0; opacity: .7; transition: opacity .15s; }
+.nav-item:hover { background: var(--border); color: var(--text); }
+.nav-item:hover svg { opacity: 1; }
+.nav-item.active {
+  background: var(--accent-s);
+  color: var(--accent);
+  font-weight: 600;
+}
+.nav-item.active svg { opacity: 1; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--red);
+  color: white;
+  font-size: 10px; font-weight: 700;
+  padding: 1px 6px; border-radius: 20px;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 14px 12px;
+  border-top: 1px solid var(--border);
+}
+.user-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 9px;
+  cursor: pointer; transition: background .15s;
+}
+.user-row:hover { background: var(--border); }
+.user-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: white; flex-shrink: 0;
+}
+.user-info { min-width:0; }
+.user-name { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.user-role { font-size:10px; color:var(--muted); }
+
+/* ═══════════════════════════════════════════
+   MAIN LAYOUT
+═══════════════════════════════════════════ */
+#main {
+  margin-left: var(--sidebar);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow-y: auto;
+  height: 100vh;
+}
+
+/* TOPBAR */
+#topbar {
+  position: sticky; top: 0; z-index: 50;
+  height: 58px;
+  background: rgba(15,17,23,0.92);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 28px; gap: 16px;
+}
+.topbar-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px; font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.topbar-breadcrumb {
+  font-size: 12px; color: var(--muted);
+}
+.topbar-spacer { flex: 1; }
+.topbar-search {
+  position: relative;
+}
+.topbar-search input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 7px 12px 7px 34px;
+  color: var(--text); font-size: 13px;
+  width: 220px;
+  outline: none;
+  transition: border-color .2s, width .3s;
+}
+.topbar-search input:focus { border-color: var(--accent); width: 280px; }
+.topbar-search svg {
+  position: absolute; left: 10px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted); pointer-events: none;
+}
+.topbar-actions { display: flex; gap: 8px; align-items: center; }
+.icon-btn {
+  width: 34px; height: 34px;
+  border-radius: 9px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--muted);
+  transition: background .15s, color .15s;
+  position: relative;
+}
+.icon-btn:hover { background: var(--border2); color: var(--text); }
+.notif-dot {
+  position: absolute; top: 7px; right: 7px;
+  width: 6px; height: 6px;
+  background: var(--red); border-radius: 50%;
+  border: 1.5px solid var(--bg);
+}
+
+/* ═══════════════════════════════════════════
+   PAGES
+═══════════════════════════════════════════ */
+.page { display: none; padding: 28px; animation: fadeIn .25s ease; }
+.page.active { display: block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+/* ── PAGE HEADER ── */
+.page-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 26px; flex-wrap: wrap; gap: 14px;
+}
+.page-header-left h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px; font-weight: 800; letter-spacing: -0.4px;
+  margin-bottom: 3px;
+}
+.page-header-left p { font-size: 13px; color: var(--muted); }
+.page-header-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* ═══════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 16px; border-radius: 9px;
+  font-size: 13px; font-weight: 600;
+  border: none; cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: white; box-shadow: 0 2px 12px rgba(79,142,247,0.35); }
+.btn-primary:hover { background: #5f9bf7; transform: translateY(-1px); box-shadow: 0 4px 18px rgba(79,142,247,0.45); }
+.btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--border); }
+.btn-danger { background: var(--red-s); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+.btn-danger:hover { background: var(--red); color: white; }
+.btn-success { background: var(--green-s); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+.btn-success:hover { background: var(--green); color: white; }
+.btn-sm { padding: 5px 11px; font-size: 12px; }
+
+/* ═══════════════════════════════════════════
+   CARDS & KPI
+═══════════════════════════════════════════ */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex; align-items: flex-start; gap: 16px;
+  transition: border-color .2s, transform .2s;
+  position: relative; overflow: hidden;
+}
+.kpi-card::before {
+  content: '';
+  position: absolute; top:0; left:0; right:0; height:2px;
+  background: var(--c);
+}
+.kpi-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+.kpi-icon {
+  width: 42px; height: 42px; border-radius: 10px;
+  background: var(--ci);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.kpi-body { min-width: 0; }
+.kpi-label { font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: 0.3px; margin-bottom: 4px; }
+.kpi-value { font-family:'Syne',sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; line-height:1; margin-bottom: 5px; }
+.kpi-sub { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+.kpi-trend { font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 2px; }
+.kpi-trend.up { color: var(--green); }
+.kpi-trend.down { color: var(--red); }
+
+/* ═══════════════════════════════════════════
+   CARD (generic)
+═══════════════════════════════════════════ */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.card-header {
+  padding: 18px 20px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.card-title { font-size: 14px; font-weight: 700; }
+.card-subtitle { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.card-body { padding: 20px; }
+
+/* ═══════════════════════════════════════════
+   CHART (pure CSS/SVG)
+═══════════════════════════════════════════ */
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+@media(max-width:900px){ .charts-grid{grid-template-columns:1fr;} }
+
+/* Bar chart */
+.bar-chart-wrap { display:flex; align-items:flex-end; gap:8px; height:160px; padding-top:10px; }
+.bar-group { display:flex; gap:4px; align-items:flex-end; flex:1; flex-direction:column; }
+.bar-month { font-size:10px; color:var(--muted); text-align:center; margin-top:6px; }
+.bar-item {
+  border-radius: 5px 5px 0 0;
+  min-width: 16px; flex:1;
+  transition: opacity .2s;
+  cursor:pointer;
+  position:relative;
+}
+.bar-item:hover { opacity:.8; }
+.bar-item[data-tip]:hover::after {
+  content: attr(data-tip);
+  position:absolute; bottom:calc(100% + 6px); left:50%;
+  transform:translateX(-50%);
+  background:var(--surface2); color:var(--text);
+  font-size:11px; padding:4px 8px; border-radius:6px;
+  white-space:nowrap; border:1px solid var(--border); z-index:10;
+}
+.bars-col { display:flex; flex-direction:column; align-items:center; gap:0; flex:1; }
+.bars-row { display:flex; align-items:flex-end; gap:3px; width:100%; height:160px; }
+
+/* Donut chart SVG */
+.donut-wrap { position:relative; display:flex; align-items:center; justify-content:center; }
+.donut-center {
+  position:absolute; text-align:center; pointer-events:none;
+}
+.donut-center-val { font-family:'Syne',sans-serif; font-size:20px; font-weight:800; }
+.donut-center-lbl { font-size:10px; color:var(--muted); }
+.donut-legend { display:flex; flex-direction:column; gap:8px; margin-left:20px; }
+.legend-item { display:flex; align-items:center; gap:8px; font-size:12px; }
+.legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.legend-val { margin-left:auto; font-weight:600; font-size:12px; padding-left:12px; }
+
+/* ═══════════════════════════════════════════
+   TABLE
+═══════════════════════════════════════════ */
+.tbl-wrap { overflow-x: auto; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+thead th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px; font-weight: 600;
+  color: var(--muted); letter-spacing: .5px; text-transform:uppercase;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+  white-space: nowrap;
+}
+thead th:first-child { border-radius: 0; }
+tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background .12s;
+  cursor: pointer;
+}
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--surface2); }
+tbody td { padding: 12px 14px; vertical-align: middle; }
+.td-mono { font-family: monospace; font-size: 12px; }
+
+/* STATUS BADGES */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .3px;
+}
+.badge::before { content:''; width:5px; height:5px; border-radius:50%; background:currentColor; }
+.badge-pago    { background: var(--green-s);  color: var(--green); }
+.badge-pendente{ background: var(--yellow-s); color: var(--yellow); }
+.badge-vencido { background: var(--red-s);    color: var(--red); }
+.badge-parcial { background: var(--purple-s); color: var(--purple); }
+.badge-cancelado{ background: rgba(122,132,154,0.12); color: var(--muted); }
+
+/* ═══════════════════════════════════════════
+   FORMS
+═══════════════════════════════════════════ */
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.form-grid-3 { grid-template-columns:1fr 1fr 1fr; }
+@media(max-width:700px){ .form-grid{grid-template-columns:1fr;} }
+.form-group { display:flex; flex-direction:column; gap:6px; }
+.form-group.full { grid-column:1/-1; }
+label { font-size:12px; font-weight:600; color:var(--muted); letter-spacing:.3px; }
+input, select, textarea {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 9px 13px;
+  color: var(--text); font-size: 13px;
+  outline: none;
+  transition: border-color .2s;
+  width: 100%;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+select option { background: var(--surface2); }
+textarea { resize: vertical; min-height: 80px; }
+.form-hint { font-size:11px; color:var(--muted); margin-top:2px; }
+
+/* ═══════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════ */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  width: 100%; max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  transform: scale(.95) translateY(12px);
+  transition: transform .25s;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+}
+.modal-overlay.open .modal { transform: scale(1) translateY(0); }
+.modal-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-title { font-family:'Syne',sans-serif; font-size:17px; font-weight:800; }
+.modal-close {
+  width:30px; height:30px; border-radius:8px;
+  background:var(--surface2); border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--muted); font-size:17px;
+  transition:background .15s;
+}
+.modal-close:hover { background:var(--border); color:var(--text); }
+.modal-body { padding: 24px; }
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px; justify-content: flex-end;
+}
+
+/* ═══════════════════════════════════════════
+   FILTERS BAR
+═══════════════════════════════════════════ */
+.filters-bar {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 18px; align-items: center;
+}
+.filter-chip {
+  padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--muted);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  transition: all .15s;
+}
+.filter-chip.active { background: var(--accent-s); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.filter-spacer { flex:1; }
+.filter-select {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 9px; padding: 6px 12px;
+  color: var(--text); font-size: 12px; font-weight: 500;
+  cursor: pointer; outline:none;
+}
+
+/* ═══════════════════════════════════════════
+   NOTIFICATION PANEL
+═══════════════════════════════════════════ */
+.notif-panel {
+  position: fixed; right: 0; top: 58px; bottom: 0;
+  width: 320px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  z-index: 200;
+  transform: translateX(100%);
+  transition: transform .3s;
+  display: flex; flex-direction: column;
+}
+.notif-panel.open { transform: translateX(0); }
+.notif-header { padding: 18px 20px; border-bottom: 1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.notif-header h3 { font-size:15px; font-weight:700; }
+.notif-list { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.notif-item {
+  padding: 12px 14px; border-radius: 10px;
+  background: var(--surface2); border: 1px solid var(--border);
+  cursor: pointer; transition: border-color .15s;
+}
+.notif-item:hover { border-color: var(--border2); }
+.notif-item.unread { border-left: 3px solid var(--accent); }
+.notif-item.unread.warning { border-left-color: var(--yellow); }
+.notif-item.unread.danger  { border-left-color: var(--red); }
+.notif-item-title { font-size:13px; font-weight:600; margin-bottom:3px; }
+.notif-item-body  { font-size:12px; color:var(--muted); line-height:1.5; }
+.notif-item-time  { font-size:11px; color:var(--muted); margin-top:5px; }
+
+/* ═══════════════════════════════════════════
+   FLUXO DE CAIXA
+═══════════════════════════════════════════ */
+.cashflow-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:24px; }
+@media(max-width:700px){ .cashflow-grid{grid-template-columns:1fr;} }
+.cashflow-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:20px;
+  display:flex; flex-direction:column; gap:6px;
+}
+.cf-lbl { font-size:11px; color:var(--muted); font-weight:600; letter-spacing:.5px; }
+.cf-val { font-family:'Syne',sans-serif; font-size:26px; font-weight:800; letter-spacing:-0.5px; }
+.cf-bar { height:4px; border-radius:2px; margin-top:4px; }
+
+/* ═══════════════════════════════════════════
+   EXPORT TOAST
+═══════════════════════════════════════════ */
+.toast {
+  position:fixed; bottom:24px; left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:var(--surface2); border:1px solid var(--border2);
+  border-radius:12px; padding:12px 20px;
+  font-size:13px; font-weight:500;
+  box-shadow:var(--shadow); z-index:2000;
+  display:flex; align-items:center; gap:10px;
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  pointer-events:none;
+}
+.toast.show { transform:translateX(-50%) translateY(0); }
+
+/* ═══════════════════════════════════════════
+   EMPTY STATE
+═══════════════════════════════════════════ */
+.empty-state {
+  text-align:center; padding:60px 20px;
+  color:var(--muted);
+}
+.empty-state svg { opacity:.25; margin-bottom:16px; }
+.empty-state h3 { font-size:16px; font-weight:700; color:var(--text); margin-bottom:6px; }
+.empty-state p { font-size:13px; line-height:1.6; }
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════ */
+@media(max-width:768px){
+  #sidebar { transform: translateX(-100%); }
+  #sidebar.open { transform: translateX(0); }
+  #main { margin-left:0; }
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+  .page { padding: 16px; }
+}
+
+/* ═══════════════════════════════════════════
+   PROGRESS BAR
+═══════════════════════════════════════════ */
+.progress-wrap { display:flex; flex-direction:column; gap:12px; }
+.progress-item { display:flex; flex-direction:column; gap:6px; }
+.progress-row { display:flex; justify-content:space-between; font-size:12px; }
+.progress-lbl { font-weight:600; }
+.progress-val { color:var(--muted); }
+.progress-track { height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+.progress-fill { height:100%; border-radius:3px; transition:width .8s cubic-bezier(.4,0,.2,1); }
+
+/* Checkbox style */
+.checkbox-wrap { display:flex; align-items:center; gap:8px; cursor:pointer; }
+.checkbox-wrap input[type=checkbox] { width:15px; height:15px; accent-color:var(--accent); cursor:pointer; }
+
+/* Table action buttons */
+.row-actions { display:flex; gap:6px; opacity:0; transition:opacity .15s; }
+tr:hover .row-actions { opacity:1; }
+.row-btn {
+  padding:4px 8px; border-radius:6px; font-size:11px; font-weight:600;
+  border:none; cursor:pointer; transition:all .15s;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">📋</div>
+    <div class="logo-name">Conta<span>Fácil</span></div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-lbl">Principal</div>
+    <button class="nav-item active" onclick="navigate('dashboard')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-item" onclick="navigate('notas')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+      Notas Fiscais
+      <span class="nav-badge" id="badge-vencidas">1</span>
+    </button>
+    <button class="nav-item" onclick="navigate('fluxo')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
+      Fluxo de Caixa
+    </button>
+    <button class="nav-item" onclick="navigate('fornecedores')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Fornecedores
+    </button>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-lbl">Relatórios</div>
+    <button class="nav-item" onclick="navigate('relatorios')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Relatórios
+    </button>
+    <button class="nav-item" onclick="exportCSV()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Exportar CSV
+    </button>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="user-avatar">RF</div>
+      <div class="user-info">
+        <div class="user-name">Rugido Rock</div>
+        <div class="user-role">Administrador</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══ TOPBAR ═══ -->
+<div id="main">
+<header id="topbar">
+  <button class="icon-btn" style="display:none" id="menuBtn" onclick="toggleSidebar()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <span class="topbar-title" id="topbarTitle">Dashboard</span>
+  <span class="topbar-spacer"></span>
+  <div class="topbar-search">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" placeholder="Buscar notas, fornecedores…" id="searchInput" oninput="globalSearch(this.value)">
+  </div>
+  <div class="topbar-actions">
+    <div class="icon-btn" onclick="toggleNotifs()" title="Notificações">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="notif-dot" id="notifDot"></span>
+    </div>
+    <div class="icon-btn" onclick="toggleTheme()" title="Alternar tema" id="themeBtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openModal('add')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nova NF
+    </button>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════
+   PAGE: DASHBOARD
+═══════════════════════════════════════════ -->
+<main class="page active" id="page-dashboard">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h2>Visão Geral</h2>
+      <p id="dashDate">Carregando...</p>
+    </div>
+    <div class="page-header-right">
+      <select class="filter-select" onchange="changePeriod(this.value)">
+        <option value="30">Últimos 30 dias</option>
+        <option value="90">Últimos 3 meses</option>
+        <option value="180">Últimos 6 meses</option>
+        <option value="365">Este ano</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="refreshDashboard()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23,4 23,10 17,10"/><polyline points="1,20 1,14 7,14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Atualizar
+      </button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <!-- Charts -->
+  <div class="charts-grid">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Evolução Mensal</div>
+          <div class="card-subtitle">Total vs Pago (R$)</div>
+        </div>
+        <div style="display:flex;gap:14px;font-size:11px;color:var(--muted)">
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:3px;background:var(--accent);display:inline-block"></span>Total</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:3px;background:var(--green);display:inline-block"></span>Pago</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="barChart" style="height:180px"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Por Categoria</div>
+          <div class="card-subtitle">Distribuição de valores</div>
+        </div>
+      </div>
+      <div class="card-body" style="display:flex;align-items:center;gap:0">
+        <div class="donut-wrap">
+          <svg id="donutSvg" width="140" height="140" viewBox="0 0 140 140"></svg>
+          <div class="donut-center">
+            <div class="donut-center-val" id="donutTotal">—</div>
+            <div class="donut-center-lbl">total</div>
+          </div>
+        </div>
+        <div class="donut-legend" id="donutLegend"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent NFs + Vencimentos -->
+  <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Últimas Notas</div>
+        <button class="btn btn-ghost btn-sm" onclick="navigate('notas')">Ver todas →</button>
+      </div>
+      <div class="tbl-wrap">
+        <table id="recentTable">
+          <thead>
+            <tr>
+              <th>Nº</th><th>Fornecedor</th><th>Vencimento</th>
+              <th style="text-align:right">Valor</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="recentBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Alertas de Vencimento</div>
+        <span id="alertCount" class="badge badge-vencido" style="font-size:10px"></span>
+      </div>
+      <div class="card-body">
+        <div id="alertsList" style="display:flex;flex-direction:column;gap:10px"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ═══════════════════════════════════════════
+   PAGE: NOTAS FISCAIS
+═══════════════════════════════════════════ -->
+<main class="page" id="page-notas">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h2>Notas Fiscais</h2>
+      <p>Gerenciamento completo de notas</p>
+    </div>
+    <div class="page-header-right">
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Exportar
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="openModal('add')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nova Nota
+      </button>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filters-bar">
+    <button class="filter-chip active" onclick="filterNFs(this,'all')">Todas <span id="fc-all"></span></button>
+    <button class="filter-chip" onclick="filterNFs(this,'pendente')">Pendente <span id="fc-pendente"></span></button>
+    <button class="filter-chip" onclick="filterNFs(this,'pago')">Pago <span id="fc-pago"></span></button>
+    <button class="filter-chip" onclick="filterNFs(this,'vencido')">Vencido <span id="fc-vencido"></span></button>
+    <button class="filter-chip" onclick="filterNFs(this,'parcial')">Parcial <span id="fc-parcial"></span></button>
+    <div class="filter-spacer"></div>
+    <select class="filter-select" onchange="sortNFs(this.value)" id="sortSelect">
+      <option value="num-asc">Nº crescente</option>
+      <option value="num-desc">Nº decrescente</option>
+      <option value="valor-desc">Maior valor</option>
+      <option value="valor-asc">Menor valor</option>
+      <option value="venc-asc">Vencimento próximo</option>
+      <option value="venc-desc">Vencimento distante</option>
+    </select>
+    <input type="date" id="filterDate" class="filter-select" style="width:auto" onchange="filterByDate(this.value)" title="Filtrar por vencimento">
+  </div>
+
+  <div class="card">
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th><label class="checkbox-wrap"><input type="checkbox" onchange="selectAll(this)"></label></th>
+            <th onclick="sortNFs('num-asc')" style="cursor:pointer">Nº ↕</th>
+            <th onclick="sortNFs('forn')" style="cursor:pointer">Fornecedor ↕</th>
+            <th>Categoria</th>
+            <th>Emissão</th>
+            <th>Vencimento</th>
+            <th style="text-align:right">Valor</th>
+            <th style="text-align:right">Pago</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="nfBody"></tbody>
+      </table>
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)">
+      <span id="tableInfo">— registros</span>
+      <div style="display:flex;gap:8px" id="bulkActions"></div>
+    </div>
+  </div>
+</main>
+
+<!-- ═══════════════════════════════════════════
+   PAGE: FLUXO DE CAIXA
+═══════════════════════════════════════════ -->
+<main class="page" id="page-fluxo">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h2>Fluxo de Caixa</h2>
+      <p>Entradas, saídas e saldo projetado</p>
+    </div>
+  </div>
+  <div class="cashflow-grid" id="cashflowKPIs"></div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Projeção Mensal</div></div>
+    <div class="card-body">
+      <div class="progress-wrap" id="cashflowBars"></div>
+    </div>
+  </div>
+  <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card">
+      <div class="card-header"><div class="card-title">A Vencer (próximos 30 dias)</div></div>
+      <div class="tbl-wrap"><table><thead><tr><th>NF</th><th>Fornecedor</th><th>Vence em</th><th style="text-align:right">Valor</th></tr></thead><tbody id="upcoming30Body"></tbody></table></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Maiores Pagamentos</div></div>
+      <div class="card-body"><div id="topPayments" class="progress-wrap"></div></div>
+    </div>
+  </div>
+</main>
+
+<!-- ═══════════════════════════════════════════
+   PAGE: FORNECEDORES
+═══════════════════════════════════════════ -->
+<main class="page" id="page-fornecedores">
+  <div class="page-header">
+    <div class="page-header-left"><h2>Fornecedores</h2><p>Visão por fornecedor</p></div>
+  </div>
+  <div class="card">
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>Fornecedor</th><th>Notas</th><th>Categorias</th><th style="text-align:right">Total (R$)</th><th style="text-align:right">Pago (R$)</th><th style="text-align:right">Pendente (R$)</th><th>Status Geral</th></tr>
+        </thead>
+        <tbody id="fornBody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- ═══════════════════════════════════════════
+   PAGE: RELATÓRIOS
+═══════════════════════════════════════════ -->
+<main class="page" id="page-relatorios">
+  <div class="page-header">
+    <div class="page-header-left"><h2>Relatórios</h2><p>Análises e exportações</p></div>
+    <div class="page-header-right">
+      <button class="btn btn-primary btn-sm" onclick="exportCSV()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Exportar CSV
+      </button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Resumo por Status</div></div>
+      <div class="card-body"><div class="progress-wrap" id="reportStatus"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Top Categorias</div></div>
+      <div class="card-body"><div class="progress-wrap" id="reportCat"></div></div>
+    </div>
+    <div class="card" style="grid-column:1/-1">
+      <div class="card-header"><div class="card-title">Todas as Notas — Relatório Completo</div></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Nº</th><th>Fornecedor</th><th>Categoria</th><th>Emissão</th><th>Vencimento</th><th style="text-align:right">Total</th><th style="text-align:right">Pago</th><th>Status</th><th>Observação</th></tr></thead>
+          <tbody id="reportBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+</div><!-- /#main -->
+
+<!-- ═══ MODAL ═══ -->
+<div class="modal-overlay" id="modal" onclick="closeModalOut(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Nova Nota Fiscal</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Número da NF *</label>
+          <input type="text" id="f-num" placeholder="NF-007">
+        </div>
+        <div class="form-group">
+          <label>Status *</label>
+          <select id="f-status">
+            <option value="pendente">Pendente</option>
+            <option value="pago">Pago</option>
+            <option value="parcial">Parcial</option>
+            <option value="vencido">Vencido</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Fornecedor *</label>
+          <input type="text" id="f-forn" placeholder="Nome do fornecedor" list="fornList">
+          <datalist id="fornList"></datalist>
+        </div>
+        <div class="form-group">
+          <label>Categoria</label>
+          <select id="f-cat">
+            <option>Consultoria</option><option>Software</option><option>Aluguel</option>
+            <option>Transporte</option><option>Energia</option><option>Material</option>
+            <option>Serviços</option><option>Outros</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Valor Total (R$) *</label>
+          <input type="number" id="f-valor" placeholder="0,00" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Valor Pago (R$)</label>
+          <input type="number" id="f-pago" placeholder="0,00" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Data de Emissão</label>
+          <input type="date" id="f-emissao">
+        </div>
+        <div class="form-group">
+          <label>Data de Vencimento *</label>
+          <input type="date" id="f-venc">
+        </div>
+        <div class="form-group full">
+          <label>Observações</label>
+          <textarea id="f-obs" placeholder="Informações adicionais…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger" id="btnDelete" onclick="deleteCurrentNF()" style="display:none">Excluir</button>
+      <button class="btn btn-primary" onclick="saveNF()">Salvar Nota</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NOTIFICATION PANEL ═══ -->
+<div class="notif-panel" id="notifPanel">
+  <div class="notif-header">
+    <h3>Notificações</h3>
+    <button class="btn btn-ghost btn-sm" onclick="markAllRead()">Marcar como lido</button>
+  </div>
+  <div class="notif-list" id="notifList"></div>
+</div>
+
+<!-- ═══ TOAST ═══ -->
+<div class="toast" id="toast">
+  <span id="toastIcon">✓</span>
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+//  DATA STORE
+// ════════════════════════════════════════════════
+const STORAGE_KEY = 'contafacil_nfs';
+
+const defaultData = [
+  { id:1, num:'NF-001', forn:'Tech Solutions Ltda',  cat:'Software',     valor:8500,  pago:0,     emissao:'2026-02-14', venc:'2026-03-14', status:'pendente', obs:'' },
+  { id:2, num:'NF-002', forn:'Mega Transporte SA',   cat:'Transporte',   valor:3200,  pago:3200,  emissao:'2026-02-01', venc:'2026-03-19', status:'pago',     obs:'Frete mensal' },
+  { id:3, num:'NF-003', forn:'Escritório Total',     cat:'Material',     valor:1750,  pago:0,     emissao:'2026-01-09', venc:'2026-02-09', status:'vencido',  obs:'Reposição de estoque' },
+  { id:4, num:'NF-004', forn:'Consultoria ABC',      cat:'Consultoria',  valor:15000, pago:5000,  emissao:'2026-02-28', venc:'2026-03-31', status:'parcial',  obs:'50% restante em abril' },
+  { id:5, num:'NF-005', forn:'Energia Brasil',       cat:'Energia',      valor:2890,  pago:0,     emissao:'2026-02-24', venc:'2026-03-24', status:'pendente', obs:'' },
+  { id:6, num:'NF-006', forn:'Imobiliária Centro',   cat:'Aluguel',      valor:6500,  pago:6500,  emissao:'2026-02-09', venc:'2026-03-09', status:'pago',     obs:'Aluguel sede março' },
+  { id:7, num:'NF-007', forn:'Tech Solutions Ltda',  cat:'Consultoria',  valor:4200,  pago:0,     emissao:'2026-03-01', venc:'2026-04-01', status:'pendente', obs:'Projeto XYZ' },
+  { id:8, num:'NF-008', forn:'Cloud Services Inc',   cat:'Software',     valor:1200,  pago:1200,  emissao:'2026-02-15', venc:'2026-03-15', status:'pago',     obs:'Licenças anuais' },
+];
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : defaultData;
+  } catch { return defaultData; }
+}
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(nfs));
+}
+
+let nfs = loadData();
+let nextId = Math.max(...nfs.map(n => n.id)) + 1;
+let currentFilter = 'all';
+let currentSort   = 'num-asc';
+let editingId     = null;
+let lightMode     = false;
+let searchQuery   = '';
+let selectedIds   = new Set();
+
+// ════════════════════════════════════════════════
+//  UTILITY FUNCTIONS
+// ════════════════════════════════════════════════
+const fmt = v => 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits:2});
+const fmtK = v => v >= 1000 ? 'R$ ' + (v/1000).toFixed(1) + 'k' : fmt(v);
+const today = () => new Date().toISOString().split('T')[0];
+const parseDate = s => s ? new Date(s + 'T00:00:00') : null;
+
+function daysDiff(dateStr) {
+  if (!dateStr) return null;
+  const d = parseDate(dateStr);
+  const now = new Date(); now.setHours(0,0,0,0);
+  return Math.round((d - now) / 86400000);
+}
+
+function formatDate(s) {
+  if (!s) return '—';
+  const [y,m,d] = s.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function autoStatus(nf) {
+  if (nf.status === 'pago' || nf.status === 'cancelado') return nf.status;
+  const diff = daysDiff(nf.venc);
+  if (diff !== null && diff < 0 && nf.pago < nf.valor) return 'vencido';
+  return nf.status;
+}
+
+function badgeHTML(status) {
+  const labels = { pago:'Pago', pendente:'Pendente', vencido:'Vencido', parcial:'Parcial', cancelado:'Cancelado' };
+  return `<span class="badge badge-${status}">${labels[status]||status}</span>`;
+}
+
+function showToast(msg, icon='✓', duration=2800) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  document.getElementById('toastIcon').textContent = icon;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ════════════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════════════
+const pageNames = {
+  dashboard: 'Dashboard', notas: 'Notas Fiscais',
+  fluxo: 'Fluxo de Caixa', fornecedores: 'Fornecedores',
+  relatorios: 'Relatórios'
+};
+
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.textContent.trim().toLowerCase().startsWith(pageNames[page].toLowerCase().substring(0,4)))
+      n.classList.add('active');
+  });
+  document.getElementById('topbarTitle').textContent = pageNames[page];
+
+  // Render specific page
+  if (page === 'dashboard')    renderDashboard();
+  if (page === 'notas')        renderNotasTable();
+  if (page === 'fluxo')        renderFluxo();
+  if (page === 'fornecedores') renderFornecedores();
+  if (page === 'relatorios')   renderRelatorios();
+
+  // Close sidebar on mobile
+  if (window.innerWidth < 768) document.getElementById('sidebar').classList.remove('open');
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// ════════════════════════════════════════════════
+//  DASHBOARD
+// ════════════════════════════════════════════════
+function renderDashboard() {
+  const live = nfs.map(n => ({ ...n, status: autoStatus(n) }));
+
+  // Date
+  document.getElementById('dashDate').textContent =
+    new Date().toLocaleDateString('pt-BR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  // KPIs
+  const total = live.reduce((a,n) => a + n.valor, 0);
+  const pago  = live.reduce((a,n) => a + n.pago, 0);
+  const venc  = live.filter(n => n.status === 'vencido').length;
+  const pend  = live.filter(n => n.status === 'pendente' || n.status === 'parcial').length;
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi-card" style="--c:var(--accent);--ci:var(--accent-s)">
+      <div class="kpi-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><polyline points="14,2 14,8 20,8"/></svg></div>
+      <div class="kpi-body">
+        <div class="kpi-label">Total de Notas</div>
+        <div class="kpi-value" style="color:var(--accent)">${live.length}</div>
+        <div class="kpi-sub">notas cadastradas</div>
+      </div>
+    </div>
+    <div class="kpi-card" style="--c:var(--green);--ci:var(--green-s)">
+      <div class="kpi-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+      <div class="kpi-body">
+        <div class="kpi-label">Valor Total</div>
+        <div class="kpi-value" style="color:var(--green)">${fmtK(total)}</div>
+        <div class="kpi-sub"><span class="kpi-trend up">↑ ${((pago/total)*100||0).toFixed(0)}% pago</span></div>
+      </div>
+    </div>
+    <div class="kpi-card" style="--c:var(--red);--ci:var(--red-s)">
+      <div class="kpi-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <div class="kpi-body">
+        <div class="kpi-label">Notas Vencidas</div>
+        <div class="kpi-value" style="color:var(--red)">${venc}</div>
+        <div class="kpi-sub">requerem atenção imediata</div>
+      </div>
+    </div>
+    <div class="kpi-card" style="--c:var(--yellow);--ci:var(--yellow-s)">
+      <div class="kpi-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg></div>
+      <div class="kpi-body">
+        <div class="kpi-label">Pendente/Parcial</div>
+        <div class="kpi-value" style="color:var(--yellow)">${pend}</div>
+        <div class="kpi-sub">${fmt(total - pago)} a receber</div>
+      </div>
+    </div>`;
+
+  renderBarChart();
+  renderDonut();
+  renderRecentTable();
+  renderAlerts();
+}
+
+// ── Bar Chart ──
+function renderBarChart() {
+  const months = getLastNMonths(6);
+  const maxVal = Math.max(...months.map(m => m.total), 1);
+
+  const html = `<div style="display:flex;align-items:flex-end;gap:6px;height:100%;padding-bottom:24px;position:relative">` +
+    months.map(m => {
+      const hTotal = ((m.total / maxVal) * 100).toFixed(1);
+      const hPago  = ((m.pago  / maxVal) * 100).toFixed(1);
+      return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+        <div style="display:flex;gap:3px;align-items:flex-end;width:100%;height:140px">
+          <div class="bar-item" style="height:${hTotal}%;background:var(--accent);opacity:.7" data-tip="${fmt(m.total)}"></div>
+          <div class="bar-item" style="height:${hPago}%;background:var(--green)" data-tip="${fmt(m.pago)}"></div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);text-align:center">${m.label}</div>
+      </div>`;
+    }).join('') + '</div>';
+
+  document.getElementById('barChart').innerHTML = html;
+}
+
+function getLastNMonths(n) {
+  const result = [];
+  const now = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const label = d.toLocaleDateString('pt-BR', {month:'short', year:'2-digit'}).replace('.','');
+    const monthNFs = nfs.filter(nf => nf.venc && nf.venc.startsWith(key));
+    result.push({
+      label: label.charAt(0).toUpperCase() + label.slice(1),
+      total: monthNFs.reduce((a,n) => a + n.valor, 0),
+      pago:  monthNFs.reduce((a,n) => a + n.pago, 0),
+    });
+  }
+  return result;
+}
+
+// ── Donut Chart ──
+const CAT_COLORS = {
+  Consultoria:'#4f8ef7', Software:'#22c55e', Aluguel:'#a78bfa',
+  Transporte:'#f59e0b', Energia:'#ef4444', Material:'#06b6d4', Serviços:'#f97316', Outros:'#7a849a'
+};
+
+function renderDonut() {
+  const cats = {};
+  nfs.forEach(n => { cats[n.cat] = (cats[n.cat]||0) + n.valor; });
+  const total = Object.values(cats).reduce((a,b) => a+b, 0);
+  const entries = Object.entries(cats).sort((a,b) => b[1]-a[1]);
+
+  document.getElementById('donutTotal').textContent = fmtK(total);
+
+  const cx = 70, cy = 70, r = 50, iR = 30;
+  let startAngle = -Math.PI / 2;
+  let paths = '';
+
+  entries.forEach(([cat, val]) => {
+    const angle = (val / total) * Math.PI * 2;
+    const end = startAngle + angle;
+    const x1 = cx + r * Math.cos(startAngle), y1 = cy + r * Math.sin(startAngle);
+    const x2 = cx + r * Math.cos(end),        y2 = cy + r * Math.sin(end);
+    const ix1 = cx + iR * Math.cos(startAngle),iy1 = cy + iR * Math.sin(startAngle);
+    const ix2 = cx + iR * Math.cos(end),       iy2 = cy + iR * Math.sin(end);
+    const large = angle > Math.PI ? 1 : 0;
+    const color = CAT_COLORS[cat] || '#7a849a';
+    paths += `<path d="M${x1},${y1} A${r},${r},0,${large},1,${x2},${y2} L${ix2},${iy2} A${iR},${iR},0,${large},0,${ix1},${iy1} Z"
+      fill="${color}" stroke="var(--surface)" stroke-width="2" style="cursor:pointer;transition:opacity .2s"
+      onmouseenter="this.style.opacity='.7'" onmouseleave="this.style.opacity='1'"
+      title="${cat}: ${fmt(val)}"/>`;
+    startAngle = end;
+  });
+
+  document.getElementById('donutSvg').innerHTML = paths;
+
+  document.getElementById('donutLegend').innerHTML = entries.slice(0,5).map(([cat,val]) =>
+    `<div class="legend-item">
+      <div class="legend-dot" style="background:${CAT_COLORS[cat]||'#7a849a'}"></div>
+      <span>${cat}</span>
+      <span class="legend-val" style="color:${CAT_COLORS[cat]||'#7a849a'}">${fmtK(val)}</span>
+    </div>`
+  ).join('');
+}
+
+// ── Recent Table ──
+function renderRecentTable() {
+  const recent = [...nfs].sort((a,b) => b.id - a.id).slice(0, 6);
+  document.getElementById('recentBody').innerHTML = recent.map(n => {
+    const s = autoStatus(n);
+    const diff = daysDiff(n.venc);
+    return `<tr onclick="openModal('edit',${n.id})">
+      <td class="td-mono" style="color:var(--accent)">${n.num}</td>
+      <td>${n.forn}</td>
+      <td style="font-size:12px;color:${diff !== null && diff < 5 ? 'var(--red)' : 'var(--muted)'}">${formatDate(n.venc)}</td>
+      <td style="text-align:right;font-weight:700">${fmt(n.valor)}</td>
+      <td>${badgeHTML(s)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Alerts ──
+function renderAlerts() {
+  const live = nfs.map(n => ({ ...n, status: autoStatus(n) }));
+  const alerts = live.filter(n => {
+    const d = daysDiff(n.venc);
+    return n.status === 'vencido' || (d !== null && d >= 0 && d <= 7);
+  }).sort((a,b) => daysDiff(a.venc) - daysDiff(b.venc));
+
+  document.getElementById('alertCount').textContent = `${alerts.length} alertas`;
+
+  document.getElementById('alertsList').innerHTML = alerts.length ? alerts.map(n => {
+    const diff = daysDiff(n.venc);
+    const isVenc = n.status === 'vencido';
+    const label = isVenc ? `Venceu há ${Math.abs(diff)} dia(s)` : diff === 0 ? 'Vence hoje!' : `Vence em ${diff} dia(s)`;
+    const color = isVenc ? 'var(--red)' : diff === 0 ? 'var(--red)' : 'var(--yellow)';
+    return `<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--surface2);border-radius:9px;border:1px solid var(--border);cursor:pointer" onclick="openModal('edit',${n.id})">
+      <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
+      <div style="min-width:0;flex:1">
+        <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n.num} — ${n.forn}</div>
+        <div style="font-size:11px;color:${color}">${label}</div>
+      </div>
+      <div style="font-size:12px;font-weight:700;white-space:nowrap">${fmt(n.valor)}</div>
+    </div>`;
+  }).join('') : '<div style="font-size:13px;color:var(--muted);text-align:center;padding:20px">✓ Nenhum alerta no momento</div>';
+}
+
+// ════════════════════════════════════════════════
+//  NOTAS FISCAIS TABLE
+// ════════════════════════════════════════════════
+function getFilteredSorted() {
+  let data = nfs.map(n => ({ ...n, status: autoStatus(n) }));
+
+  // search
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    data = data.filter(n =>
+      n.num.toLowerCase().includes(q) ||
+      n.forn.toLowerCase().includes(q) ||
+      n.cat.toLowerCase().includes(q)
+    );
+  }
+
+  // status filter
+  if (currentFilter !== 'all') data = data.filter(n => n.status === currentFilter);
+
+  // sort
+  const [field, dir] = currentSort.includes('-') ? currentSort.split('-') : [currentSort, 'asc'];
+  data.sort((a,b) => {
+    let va, vb;
+    if (field === 'num')   { va = a.num; vb = b.num; }
+    else if (field === 'valor') { va = a.valor; vb = b.valor; }
+    else if (field === 'venc')  { va = a.venc||''; vb = b.venc||''; }
+    else if (field === 'forn')  { va = a.forn; vb = b.forn; }
+    else { va = a.num; vb = b.num; }
+    const cmp = typeof va === 'number' ? va - vb : va.localeCompare(vb);
+    return dir === 'desc' ? -cmp : cmp;
+  });
+  return data;
+}
+
+function renderNotasTable() {
+  updateFilterCounts();
+  const data = getFilteredSorted();
+  selectedIds.clear();
+  updateBulkActions();
+
+  document.getElementById('nfBody').innerHTML = data.length ? data.map(n => {
+    const diff = daysDiff(n.venc);
+    const vencColor = n.status === 'vencido' ? 'var(--red)' : (diff !== null && diff <= 3 ? 'var(--yellow)' : 'inherit');
+    return `<tr>
+      <td><label class="checkbox-wrap"><input type="checkbox" value="${n.id}" onchange="toggleSelect(this)"></label></td>
+      <td class="td-mono" style="color:var(--accent)">${n.num}</td>
+      <td><div style="font-weight:600;font-size:13px">${n.forn}</div></td>
+      <td><span style="font-size:11px;padding:3px 8px;border-radius:20px;background:var(--surface2);color:var(--muted)">${n.cat}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${formatDate(n.emissao)}</td>
+      <td style="font-size:12px;color:${vencColor};font-weight:${vencColor!=='inherit'?'700':'400'}">${formatDate(n.venc)}</td>
+      <td style="text-align:right;font-weight:700">${fmt(n.valor)}</td>
+      <td style="text-align:right;color:var(--green)">${n.pago > 0 ? fmt(n.pago) : '—'}</td>
+      <td>${badgeHTML(n.status)}</td>
+      <td>
+        <div class="row-actions">
+          <button class="row-btn" style="background:var(--accent-s);color:var(--accent)" onclick="event.stopPropagation();openModal('edit',${n.id})">Editar</button>
+          <button class="row-btn" style="background:var(--green-s);color:var(--green)" onclick="event.stopPropagation();quickPay(${n.id})">Pagar</button>
+          <button class="row-btn" style="background:var(--red-s);color:var(--red)" onclick="event.stopPropagation();deleteNF(${n.id})">Del</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="10"><div class="empty-state">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <h3>Nenhuma nota encontrada</h3>
+    <p>Tente outro filtro ou adicione uma nova nota fiscal.</p>
+  </div></td></tr>`;
+
+  document.getElementById('tableInfo').textContent = `${data.length} de ${nfs.length} registros`;
+  updateFornDatalist();
+}
+
+function updateFilterCounts() {
+  const live = nfs.map(n => ({ ...n, status: autoStatus(n) }));
+  document.getElementById('fc-all').textContent     = `(${live.length})`;
+  document.getElementById('fc-pendente').textContent = `(${live.filter(n=>n.status==='pendente').length})`;
+  document.getElementById('fc-pago').textContent     = `(${live.filter(n=>n.status==='pago').length})`;
+  document.getElementById('fc-vencido').textContent  = `(${live.filter(n=>n.status==='vencido').length})`;
+  document.getElementById('fc-parcial').textContent  = `(${live.filter(n=>n.status==='parcial').length})`;
+  document.getElementById('badge-vencidas').textContent = live.filter(n=>n.status==='vencido').length || '';
+}
+
+function filterNFs(el, status) {
+  currentFilter = status;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderNotasTable();
+}
+
+function sortNFs(val) {
+  currentSort = val;
+  renderNotasTable();
+}
+
+function filterByDate(val) {
+  if (!val) { searchQuery = ''; renderNotasTable(); return; }
+  // Show only NFs with vencimento == val
+  const data = nfs.filter(n => n.venc === val);
+  document.getElementById('nfBody').innerHTML = data.map(n => {
+    const s = autoStatus(n);
+    return `<tr>
+      <td></td>
+      <td class="td-mono" style="color:var(--accent)">${n.num}</td>
+      <td>${n.forn}</td><td>${n.cat}</td><td>${formatDate(n.emissao)}</td>
+      <td>${formatDate(n.venc)}</td>
+      <td style="text-align:right;font-weight:700">${fmt(n.valor)}</td>
+      <td style="text-align:right">${n.pago>0?fmt(n.pago):'—'}</td>
+      <td>${badgeHTML(s)}</td><td></td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--muted)">Nenhuma nota para esta data</td></tr>`;
+}
+
+// ── Select all / bulk ──
+function selectAll(cb) {
+  document.querySelectorAll('#nfBody input[type=checkbox]').forEach(c => {
+    c.checked = cb.checked;
+    cb.checked ? selectedIds.add(+c.value) : selectedIds.delete(+c.value);
+  });
+  updateBulkActions();
+}
+function toggleSelect(cb) {
+  cb.checked ? selectedIds.add(+cb.value) : selectedIds.delete(+cb.value);
+  updateBulkActions();
+}
+function updateBulkActions() {
+  const el = document.getElementById('bulkActions');
+  if (selectedIds.size > 0) {
+    el.innerHTML = `<span style="color:var(--muted)">${selectedIds.size} selecionada(s)</span>
+      <button class="btn btn-success btn-sm" onclick="bulkMarkPago()">✓ Marcar como Pago</button>
+      <button class="btn btn-danger btn-sm" onclick="bulkDelete()">✕ Excluir selecionadas</button>`;
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+function bulkMarkPago() {
+  selectedIds.forEach(id => {
+    const n = nfs.find(x => x.id === id);
+    if (n) { n.status = 'pago'; n.pago = n.valor; }
+  });
+  saveData(); renderNotasTable();
+  showToast(`${selectedIds.size} nota(s) marcada(s) como pago`, '✓');
+  selectedIds.clear();
+}
+
+function bulkDelete() {
+  if (!confirm(`Excluir ${selectedIds.size} nota(s)? Esta ação não pode ser desfeita.`)) return;
+  nfs = nfs.filter(n => !selectedIds.has(n.id));
+  saveData(); renderNotasTable();
+  showToast('Notas excluídas', '🗑');
+  selectedIds.clear();
+}
+
+// ── Quick pay ──
+function quickPay(id) {
+  const n = nfs.find(x => x.id === id);
+  if (!n) return;
+  n.status = 'pago'; n.pago = n.valor;
+  saveData(); renderNotasTable();
+  showToast(`${n.num} marcada como paga!`, '✓');
+}
+
+// ── Delete ──
+function deleteNF(id) {
+  if (!confirm('Excluir esta nota fiscal?')) return;
+  nfs = nfs.filter(n => n.id !== id);
+  saveData(); renderNotasTable();
+  showToast('Nota excluída', '🗑');
+}
+
+// ════════════════════════════════════════════════
+//  MODAL
+// ════════════════════════════════════════════════
+function openModal(mode, id) {
+  editingId = id || null;
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('btnDelete').style.display = mode === 'edit' ? 'inline-flex' : 'none';
+
+  if (mode === 'edit' && id) {
+    const n = nfs.find(x => x.id === id);
+    if (!n) return;
+    document.getElementById('modalTitle').textContent = `Editar ${n.num}`;
+    document.getElementById('f-num').value     = n.num;
+    document.getElementById('f-forn').value    = n.forn;
+    document.getElementById('f-cat').value     = n.cat;
+    document.getElementById('f-valor').value   = n.valor;
+    document.getElementById('f-pago').value    = n.pago;
+    document.getElementById('f-emissao').value = n.emissao;
+    document.getElementById('f-venc').value    = n.venc;
+    document.getElementById('f-status').value  = n.status;
+    document.getElementById('f-obs').value     = n.obs;
+  } else {
+    document.getElementById('modalTitle').textContent = 'Nova Nota Fiscal';
+    document.getElementById('f-num').value     = `NF-${String(nextId).padStart(3,'0')}`;
+    document.getElementById('f-forn').value    = '';
+    document.getElementById('f-cat').value     = 'Consultoria';
+    document.getElementById('f-valor').value   = '';
+    document.getElementById('f-pago').value    = '0';
+    document.getElementById('f-emissao').value = today();
+    document.getElementById('f-venc').value    = '';
+    document.getElementById('f-status').value  = 'pendente';
+    document.getElementById('f-obs').value     = '';
+  }
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function closeModalOut(e) { if (e.target === document.getElementById('modal')) closeModal(); }
+
+function saveNF() {
+  const num   = document.getElementById('f-num').value.trim();
+  const forn  = document.getElementById('f-forn').value.trim();
+  const valor = parseFloat(document.getElementById('f-valor').value);
+  const venc  = document.getElementById('f-venc').value;
+
+  if (!num)       { alert('Preencha o número da NF.'); return; }
+  if (!forn)      { alert('Preencha o fornecedor.'); return; }
+  if (!valor || isNaN(valor)) { alert('Preencha o valor total.'); return; }
+  if (!venc)      { alert('Preencha a data de vencimento.'); return; }
+
+  const obj = {
+    num, forn,
+    cat:     document.getElementById('f-cat').value,
+    valor,
+    pago:    parseFloat(document.getElementById('f-pago').value) || 0,
+    emissao: document.getElementById('f-emissao').value,
+    venc,
+    status:  document.getElementById('f-status').value,
+    obs:     document.getElementById('f-obs').value,
+  };
+
+  if (editingId) {
+    const idx = nfs.findIndex(n => n.id === editingId);
+    nfs[idx] = { ...nfs[idx], ...obj };
+    showToast(`${num} atualizada com sucesso!`, '✓');
+  } else {
+    obj.id = nextId++;
+    nfs.push(obj);
+    showToast(`${num} adicionada!`, '✓');
+  }
+
+  saveData(); closeModal();
+  renderNotasTable();
+  updateFilterCounts();
+}
+
+function deleteCurrentNF() {
+  if (!editingId) return;
+  const n = nfs.find(x => x.id === editingId);
+  if (!confirm(`Excluir ${n?.num}? Esta ação não pode ser desfeita.`)) return;
+  nfs = nfs.filter(x => x.id !== editingId);
+  saveData(); closeModal(); renderNotasTable();
+  showToast('Nota excluída', '🗑');
+}
+
+function updateFornDatalist() {
+  const uniq = [...new Set(nfs.map(n => n.forn))].sort();
+  document.getElementById('fornList').innerHTML = uniq.map(f => `<option value="${f}">`).join('');
+}
+
+// ════════════════════════════════════════════════
+//  FLUXO DE CAIXA
+// ════════════════════════════════════════════════
+function renderFluxo() {
+  const live = nfs.map(n => ({ ...n, status: autoStatus(n) }));
+  const total  = live.reduce((a,n) => a + n.valor, 0);
+  const pago   = live.reduce((a,n) => a + n.pago, 0);
+  const a_pagar = live.filter(n => n.status !== 'pago' && n.status !== 'cancelado').reduce((a,n) => a + (n.valor - n.pago), 0);
+  const venc   = live.filter(n => n.status === 'vencido').reduce((a,n) => a + n.valor - n.pago, 0);
+
+  document.getElementById('cashflowKPIs').innerHTML = `
+    <div class="cashflow-card">
+      <div class="cf-lbl">TOTAL EMITIDO</div>
+      <div class="cf-val" style="color:var(--accent)">${fmt(total)}</div>
+      <div class="cf-bar" style="background:linear-gradient(90deg,var(--accent),var(--purple));width:100%"></div>
+    </div>
+    <div class="cashflow-card">
+      <div class="cf-lbl">TOTAL PAGO</div>
+      <div class="cf-val" style="color:var(--green)">${fmt(pago)}</div>
+      <div class="cf-bar" style="background:var(--green);width:${((pago/total)*100).toFixed(0)}%"></div>
+    </div>
+    <div class="cashflow-card">
+      <div class="cf-lbl">A PAGAR</div>
+      <div class="cf-val" style="color:var(--yellow)">${fmt(a_pagar)}</div>
+      <div class="cf-bar" style="background:var(--yellow);width:${((a_pagar/total)*100).toFixed(0)}%"></div>
+    </div>`;
+
+  // Monthly bars
+  const months = getLastNMonths(6);
+  const maxTotal = Math.max(...months.map(m => m.total), 1);
+  document.getElementById('cashflowBars').innerHTML = months.map(m => `
+    <div class="progress-item">
+      <div class="progress-row">
+        <span class="progress-lbl">${m.label}</span>
+        <span class="progress-val">${fmt(m.pago)} / ${fmt(m.total)}</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" style="width:${(m.total/maxTotal*100).toFixed(0)}%;background:var(--surface2)"></div>
+      </div>
+      <div class="progress-track" style="margin-top:3px">
+        <div class="progress-fill" style="width:${m.total>0?(m.pago/m.total*100).toFixed(0):0}%;background:var(--green)"></div>
+      </div>
+    </div>`
+  ).join('');
+
+  // Upcoming 30
+  const now = new Date(); now.setHours(0,0,0,0);
+  const in30 = new Date(now); in30.setDate(in30.getDate()+30);
+  const upcoming = live.filter(n => {
+    const d = parseDate(n.venc);
+    return d && d >= now && d <= in30 && n.status !== 'pago' && n.status !== 'cancelado';
+  }).sort((a,b) => a.venc.localeCompare(b.venc));
+
+  document.getElementById('upcoming30Body').innerHTML = upcoming.length ? upcoming.map(n => {
+    const diff = daysDiff(n.venc);
+    return `<tr onclick="openModal('edit',${n.id})">
+      <td class="td-mono" style="color:var(--accent)">${n.num}</td>
+      <td>${n.forn}</td>
+      <td style="color:${diff<=3?'var(--red)':'var(--yellow)'};font-size:12px">${diff === 0 ? 'Hoje' : `${diff}d`}</td>
+      <td style="text-align:right;font-weight:700">${fmt(n.valor - n.pago)}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">Nenhum vencimento nos próximos 30 dias</td></tr>`;
+
+  // Top payments
+  const sorted = [...live].sort((a,b) => b.valor - a.valor).slice(0,5);
+  const maxV = sorted[0]?.valor || 1;
+  document.getElementById('topPayments').innerHTML = sorted.map(n => `
+    <div class="progress-item">
+      <div class="progress-row">
+        <span class="progress-lbl" style="font-size:12px">${n.forn}</span>
+        <span class="progress-val">${fmt(n.valor)}</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" style="width:${(n.valor/maxV*100).toFixed(0)}%;background:${CAT_COLORS[n.cat]||'var(--accent)'}"></div>
+      </div>
+    </div>`
+  ).join('');
+}
+
+// ════════════════════════════════════════════════
+//  FORNECEDORES
+// ════════════════════════════════════════════════
+function renderFornecedores() {
+  const live = nfs.map(n => ({ ...n, status: autoStatus(n) }));
+  const forns = {};
+  live.forEach(n => {
+    if (!forns[n.forn]) forns[n.forn] = { notas:0, cats:new Set(), total:0, pago:0, statuses:[] };
+    const f = forns[n.forn];
+    f.notas++; f.cats.add(n.cat); f.total += n.valor; f.pago += n.pago; f.statuses.push(n.status);
+  });
+
+  document.getElementById('fornBody').innerHTML = Object.entries(forns).map(([forn, f]) => {
+    const pend = f.total - f.pago;
+    const hasVenc = f.statuses.includes('vencido');
+    const allPago = f.statuses.every(s => s==='pago');
+    const statusLabel = hasVenc ? badgeHTML('vencido') : allPago ? badgeHTML('pago') : badgeHTML('pendente');
+    return `<tr>
+      <td><div style="font-weight:700">${forn}</div></td>
+      <td>${f.notas}</td>
+      <td style="font-size:11px;color:var(--muted)">${[...f.cats].join(', ')}</td>
+      <td style="text-align:right;font-weight:700">${fmt(f.total)}</td>
+      <td style="text-align:right;color:var(--green)">${fmt(f.pago)}</td>
+      <td style="text-align:right;color:${pend>0?'var(--yellow)':'var(--muted)'}">${pend > 0 ? fmt(pend) : '—'}</td>
+      <td>${statusLabel}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════
+//  RELATÓRIOS
+// ════════════════════════════════════════════════
+function renderRelatorios() {
+  const live = nfs.map(n => ({ ...n, status: autoStatus(n) }));
+  const total = live.reduce((a,n) => a+n.valor, 0);
+
+  // Status breakdown
+  const statuses = ['pago','pendente','parcial','vencido','cancelado'];
+  const statusTotals = {};
+  statuses.forEach(s => { statusTotals[s] = live.filter(n=>n.status===s).reduce((a,n)=>a+n.valor,0); });
+  const maxS = Math.max(...Object.values(statusTotals),1);
+  document.getElementById('reportStatus').innerHTML = statuses.map(s => {
+    const v = statusTotals[s];
+    const cols = { pago:'var(--green)', pendente:'var(--yellow)', parcial:'var(--purple)', vencido:'var(--red)', cancelado:'var(--muted)' };
+    return `<div class="progress-item">
+      <div class="progress-row">
+        <span class="progress-lbl">${s.charAt(0).toUpperCase()+s.slice(1)}</span>
+        <span class="progress-val">${fmt(v)}</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" style="width:${(v/maxS*100).toFixed(0)}%;background:${cols[s]}"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Category breakdown
+  const cats = {};
+  live.forEach(n => { cats[n.cat] = (cats[n.cat]||0) + n.valor; });
+  const catEntries = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  const maxC = catEntries[0]?.[1] || 1;
+  document.getElementById('reportCat').innerHTML = catEntries.map(([cat,v]) => `
+    <div class="progress-item">
+      <div class="progress-row">
+        <span class="progress-lbl">${cat}</span>
+        <span class="progress-val">${fmt(v)} (${((v/total)*100).toFixed(1)}%)</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" style="width:${(v/maxC*100).toFixed(0)}%;background:${CAT_COLORS[cat]||'var(--accent)'}"></div>
+      </div>
+    </div>`
+  ).join('');
+
+  // Full table
+  document.getElementById('reportBody').innerHTML = live.map(n => `
+    <tr>
+      <td class="td-mono" style="color:var(--accent)">${n.num}</td>
+      <td>${n.forn}</td>
+      <td style="font-size:12px">${n.cat}</td>
+      <td style="font-size:12px;color:var(--muted)">${formatDate(n.emissao)}</td>
+      <td style="font-size:12px">${formatDate(n.venc)}</td>
+      <td style="text-align:right;font-weight:700">${fmt(n.valor)}</td>
+      <td style="text-align:right;color:var(--green)">${n.pago>0?fmt(n.pago):'—'}</td>
+      <td>${badgeHTML(n.status)}</td>
+      <td style="font-size:12px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.obs||'—'}</td>
+    </tr>`
+  ).join('');
+}
+
+// ════════════════════════════════════════════════
+//  EXPORT CSV
+// ════════════════════════════════════════════════
+function exportCSV() {
+  const live = nfs.map(n => ({ ...n, status: autoStatus(n) }));
+  const headers = ['Número','Fornecedor','Categoria','Emissão','Vencimento','Valor Total','Valor Pago','Pendente','Status','Observações'];
+  const rows = live.map(n => [
+    n.num, n.forn, n.cat,
+    formatDate(n.emissao), formatDate(n.venc),
+    n.valor.toFixed(2), n.pago.toFixed(2),
+    (n.valor - n.pago).toFixed(2),
+    n.status, n.obs
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `ContaFacil_${today()}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('CSV exportado com sucesso!', '📥');
+}
+
+// ════════════════════════════════════════════════
+//  NOTIFICATIONS
+// ════════════════════════════════════════════════
+function buildNotifications() {
+  const live = nfs.map(n => ({ ...n, status: autoStatus(n) }));
+  const notifs = [];
+
+  live.filter(n => n.status === 'vencido').forEach(n => {
+    notifs.push({ title:`NF Vencida: ${n.num}`, body:`${n.forn} — ${fmt(n.valor)}`, time:'Urgente', type:'danger', unread:true });
+  });
+
+  live.filter(n => { const d = daysDiff(n.venc); return d !== null && d >= 0 && d <= 5 && n.status !== 'pago'; }).forEach(n => {
+    const d = daysDiff(n.venc);
+    notifs.push({ title:`Vence em ${d}d: ${n.num}`, body:`${n.forn} — ${fmt(n.valor)}`, time:`${d} dia(s)`, type:'warning', unread:true });
+  });
+
+  notifs.push({ title:'Resumo do sistema', body:`${live.length} notas cadastradas, ${live.filter(n=>n.status==='pago').length} pagas.`, time:'Agora', type:'info', unread:false });
+
+  document.getElementById('notifList').innerHTML = notifs.map(n =>
+    `<div class="notif-item unread ${n.type}">
+      <div class="notif-item-title">${n.title}</div>
+      <div class="notif-item-body">${n.body}</div>
+      <div class="notif-item-time">${n.time}</div>
+    </div>`
+  ).join('');
+
+  const unread = notifs.filter(n => n.unread).length;
+  document.getElementById('notifDot').style.display = unread ? 'block' : 'none';
+}
+
+function toggleNotifs() {
+  document.getElementById('notifPanel').classList.toggle('open');
+  buildNotifications();
+}
+
+function markAllRead() {
+  document.querySelectorAll('.notif-item').forEach(el => el.classList.remove('unread'));
+  document.getElementById('notifDot').style.display = 'none';
+}
+
+// ════════════════════════════════════════════════
+//  GLOBAL SEARCH
+// ════════════════════════════════════════════════
+function globalSearch(q) {
+  searchQuery = q;
+  if (document.getElementById('page-notas').classList.contains('active')) renderNotasTable();
+}
+
+// ════════════════════════════════════════════════
+//  REFRESH / PERIOD
+// ════════════════════════════════════════════════
+function refreshDashboard() {
+  nfs = loadData();
+  renderDashboard();
+  showToast('Dashboard atualizado!', '↻');
+}
+
+function changePeriod(days) {
+  showToast(`Exibindo últimos ${days} dias`, '📅');
+  renderBarChart();
+}
+
+// ════════════════════════════════════════════════
+//  THEME TOGGLE
+// ════════════════════════════════════════════════
+function toggleTheme() {
+  lightMode = !lightMode;
+  if (lightMode) {
+    document.documentElement.style.setProperty('--bg','#f4f6fa');
+    document.documentElement.style.setProperty('--surface','#ffffff');
+    document.documentElement.style.setProperty('--surface2','#f0f2f8');
+    document.documentElement.style.setProperty('--border','rgba(0,0,0,0.07)');
+    document.documentElement.style.setProperty('--border2','rgba(0,0,0,0.13)');
+    document.documentElement.style.setProperty('--text','#1a2744');
+    document.documentElement.style.setProperty('--muted','#6b7a99');
+  } else {
+    document.documentElement.style.setProperty('--bg','#0f1117');
+    document.documentElement.style.setProperty('--surface','#181c27');
+    document.documentElement.style.setProperty('--surface2','#1e2333');
+    document.documentElement.style.setProperty('--border','rgba(255,255,255,0.07)');
+    document.documentElement.style.setProperty('--border2','rgba(255,255,255,0.13)');
+    document.documentElement.style.setProperty('--text','#e8eaf0');
+    document.documentElement.style.setProperty('--muted','#7a849a');
+  }
+  showToast(lightMode ? 'Tema claro ativado' : 'Tema escuro ativado', '🎨');
+}
+
+// ════════════════════════════════════════════════
+//  KEYBOARD SHORTCUTS
+// ════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModal(); document.getElementById('notifPanel').classList.remove('open'); }
+  if ((e.ctrlKey||e.metaKey) && e.key==='n') { e.preventDefault(); openModal('add'); }
+  if ((e.ctrlKey||e.metaKey) && e.key==='e') { e.preventDefault(); exportCSV(); }
+});
+
+// ════════════════════════════════════════════════
+//  RESPONSIVE
+// ════════════════════════════════════════════════
+function handleResize() {
+  const menuBtn = document.getElementById('menuBtn');
+  if (window.innerWidth < 768) {
+    menuBtn.style.display = 'flex';
+  } else {
+    menuBtn.style.display = 'none';
+    document.getElementById('sidebar').classList.remove('open');
+  }
+}
+window.addEventListener('resize', handleResize);
+handleResize();
+
+// ════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════
+renderDashboard();
+buildNotifications();
+</script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ABRA SUA MENTE - O Oráculo</title>
+    <style>
+        :root {
+            --mystic-purple: #6c5ce7;
+            --crystal-glow: #00d2ff;
+            --gold: #f1c40f;
+            --dark-void: #05050a;
+            --success: #00ff88;
+            /* Caminho para a imagem que você salvou */
+            --vidente-image: url('vidente-fundo.png'); 
+        }
+
+        body {
+            font-family: 'Palatino Linotype', serif;
+            /* Fundo principal com a imagem implementada */
+            background-color: var(--dark-void);
+            background-image: var(--vidente-image);
+            background-size: cover; /* Cobre toda a tela */
+            background-position: center; /* Centraliza a imagem */
+            background-attachment: fixed; /* Mantém a imagem fixa ao rolar */
+            background-blend-mode: overlay; /* Mistura a imagem com a cor escura para tensão */
+            color: #e0e0e0;
+            margin: 0;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* --- AUDIO CONTROL --- */
+        .audio-control {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(108, 92, 231, 0.4);
+            border: 1px solid var(--mystic-purple);
+            color: var(--gold);
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            transition: 0.3s;
+        }
+        .audio-control:hover { background: var(--mystic-purple); color: white; }
+
+        /* --- MENU DE ENTRADA (A VIDENTE) --- */
+        #menu-toggle { display: none; }
+
+        .vidente-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+            transition: 1s ease-in-out;
+            /* Camada escura opcional sobre a imagem para destacar o texto */
+            background: rgba(0, 0, 0, 0.5); 
+            width: 100%;
+        }
+
+        .bola-de-cristal {
+            width: 160px;
+            height: 160px;
+            background: radial-gradient(circle at 30% 30%, #fff, var(--crystal-glow), var(--mystic-purple));
+            border-radius: 50%;
+            margin: 30px;
+            box-shadow: 0 0 60px var(--crystal-glow);
+            animation: flutuar 3s ease-in-out infinite, pulso 2s alternate infinite;
+            cursor: pointer;
+            display: block;
+        }
+
+        @keyframes flutuar {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-25px) scale(1.05); }
+        }
+
+        @keyframes pulso {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.3) contrast(1.2); }
+        }
+
+        .btn-portal {
+            background: none;
+            border: 2px solid var(--gold);
+            color: var(--gold);
+            padding: 15px 40px;
+            letter-spacing: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.5s;
+            text-transform: uppercase;
+        }
+
+        .btn-portal:hover {
+            box-shadow: 0 0 30px var(--gold);
+            background: var(--gold);
+            color: black;
+        }
+
+        /* --- TRANSIÇÃO --- */
+        .game-content {
+            display: none;
+            opacity: 0;
+            padding: 40px 20px;
+            max-width: 1100px;
+            width: 100%;
+            /* Fundo semi-transparente para os cards não sumirem na imagem */
+            background: rgba(5, 5, 10, 0.7);
+            border-radius: 20px;
+            margin: 20px 0;
+        }
+
+        #menu-toggle:checked ~ .vidente-section { display: none; }
+        #menu-toggle:checked ~ .game-content { 
+            display: block; 
+            animation: fadeIn 2s forwards;
+        }
+
+        @keyframes fadeIn { to { opacity: 1; } }
+
+        /* --- GRID DOS ENIGMAS --- */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: rgba(20, 20, 35, 0.9);
+            border: 1px solid #333;
+            padding: 25px;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(5px); /* Efeito de vidro fosco */
+        }
+
+        .card::before {
+            content: ''; position: absolute; top:0; left:0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--mystic-purple), transparent);
+        }
+
+        h3 { color: var(--gold); text-transform: uppercase; font-size: 0.9rem; letter-spacing: 2px; }
+
+        /* --- PUZZLES --- */
+        .lock-check { width: 30px; height: 30px; accent-color: var(--gold); cursor: pointer; }
+        .res-p1::after { content: " 🔒"; }
+        #a1:checked ~ #a2:not(:checked) ~ #a3:checked ~ .res-p1::after { content: " 🔓 LIBERADO"; color: var(--success); }
+
+        .riddle-input {
+            width: 100%; background: #000; border: 1px solid var(--mystic-purple);
+            color: white; padding: 10px; margin-top: 10px; text-align: center; border-radius: 5px;
+        }
+        .riddle-msg { display: none; color: var(--crystal-glow); margin-top: 10px; font-size: 0.8rem; font-style: italic; }
+        .riddle-input:valid + .riddle-msg { display: block; }
+
+    </style>
+</head>
+<body>
+
+    <audio id="suspense-audio" loop>
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3" type="audio/mpeg">
+    </audio>
+
+    <div class="audio-control" onclick="document.getElementById('suspense-audio').play(); this.style.display='none';">
+        🔈 ATIVAR ATMOSFERA
+    </div>
+
+    <input type="checkbox" id="menu-toggle">
+
+    <div class="vidente-section">
+        <h2 style="letter-spacing: 12px; color: var(--mystic-purple); text-shadow: 0 0 15px var(--mystic-purple);">ABRA SUA MENTE</h2>
+        <label for="menu-toggle" class="bola-de-cristal"></label>
+        <p style="font-style: italic; color: #bbb; max-width: 400px;">"A névoa se dissipa... Toque na esfera e enfrente os portais da sua própria consciência."</p>
+        <label for="menu-toggle" class="btn-portal">INICIAR RITUAL</label>
+    </div>
+
+    <div class="game-content">
+        <h1 style="text-align: center; color: var(--gold); margin-bottom: 40px; letter-spacing: 5px; text-shadow: 0 0 10px var(--gold);">OS TESTES DO ORÁCULO</h1>
+        
+        <div class="grid">
+            <div class="card">
+                <h3>I - Frequência Espiritual</h3>
+                <p>Alinhe os astros (On/Off/On)</p>
+                <div style="display: flex; justify-content: center; gap: 10px;">
+                    <input type="checkbox" id="a1" class="lock-check">
+                    <input type="checkbox" id="a2" class="lock-check">
+                    <input type="checkbox" id="a3" class="lock-check">
+                </div>
+                <p class="res-p1">Frequência:</p>
+            </div>
+
+            <div class="card">
+                <h3>II - O Labirinto do Tempo</h3>
+                <p>Mantenha o foco na trilha de ouro.</p>
+                <div style="width: 100%; height: 60px; background: #000; position: relative; border-radius: 5px; overflow: hidden;">
+                    <div style="width: 20px; height: 100%; background: var(--gold); transition: width 2s linear; cursor: pointer; box-shadow: 0 0 15px var(--gold);" onmouseover="this.style.width='100%'"></div>
+                </div>
+                <p style="font-size: 0.7rem; color: #888; margin-top: 5px;">(Deslize para atravessar)</p>
+            </div>
+
+            <div class="card">
+                <h3>III - A Chama Eterna</h3>
+                <p>O que queima mas não tem fogo?</p>
+                <input type="text" class="riddle-input" placeholder="Sua resposta..." pattern="[Vv]ela|[Pp]ensamento">
+                <div class="riddle-msg">A chama brilha em você.</div>
+            </div>
+
+            <div class="card">
+                <h3>IV - Visão de Águia</h3>
+                <p>Clique no centro da visão oculta</p>
+                <div style="width: 60px; height: 60px; border: 2px solid var(--mystic-purple); border-radius: 50%; margin: 10px auto; cursor: crosshair; display: flex; align-items: center; justify-content: center;" onclick="this.style.background='var(--crystal-glow)'; this.style.borderColor='white';">
+                    <div style="width: 10px; height: 10px; background: var(--gold); border-radius: 50%;"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>V - O Enigma da Vidente</h3>
+                <p>Quanto mais você tira, maior eu fico. O que sou?</p>
+                <input type="text" class="riddle-input" placeholder="..." pattern="[Bb]uraco">
+                <div class="riddle-msg">Você enxerga o vazio.</div>
+            </div>
+        </div>
+
+        <p style="text-align: center; margin-top: 50px; color: #555; font-size: 0.8rem;">O conhecimento exige paciência e silêncio.</p>
+        <div style="text-align: center; margin-top: 20px;">
+            <label for="menu-toggle" style="color: var(--gold); cursor: pointer; text-decoration: underline; font-size: 0.9rem;">← Voltar ao Oráculo</label>
+        </div>
+    </div>
+
+    <script>
+        // Garante que a música toque ao interagir com a bola de cristal ou o botão
+        const startElements = document.querySelectorAll('.bola-de-cristal, .btn-portal');
+        const audio = document.getElementById('suspense-audio');
+        const audioBtn = document.querySelector('.audio-control');
+
+        startElements.forEach(el => {
+            el.addEventListener('click', function() {
+                audio.play();
+                audioBtn.style.display = 'none'; // Esconde o botão de ativar som
+            });
+        });
+    </script>
+
+</body>
+</html>

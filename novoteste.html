@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>NEON OVERDRIVE | Pro</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; color: #fff; }
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.8); z-index: 10; }
+        button { background: transparent; border: 2px solid #0ff; color: #0ff; padding: 15px 30px; cursor: pointer; font-size: 20px; margin: 10px; transition: 0.3s; text-transform: uppercase; }
+        button:hover { background: #0ff; color: #000; }
+        #ui { position: absolute; top: 20px; left: 20px; color: #0ff; display: none; font-size: 24px; }
+        .hidden { display: none; }
+        h1 { color: #f0f; text-shadow: 0 0 20px #f0f; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">SCORE: <span id="score">0</span></div>
+
+    <div id="menu" class="overlay">
+        <h1>NEON OVERDRIVE</h1>
+        <button onclick="showSelection()">Jogar</button>
+    </div>
+
+    <div id="selection" class="overlay hidden">
+        <h2>ESCOLHA SEU VEÍCULO</h2>
+        <div>
+            <button onclick="startGame(0x00ffff)">Ciano</button>
+            <button onclick="startGame(0xff00ff)">Magenta</button>
+            <button onclick="startGame(0x00ff00)">Limão</button>
+            <button onclick="startGame(0xffff00)">Amarelo</button>
+        </div>
+    </div>
+
+    <div id="game-over" class="overlay hidden">
+        <h1>CRASH!</h1>
+        <button onclick="location.reload()">REINICIAR</button>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.module.min.js';
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        let player;
+        let isPlaying = false;
+        let score = 0;
+        let obstacles = [];
+        let speed = 0.5;
+
+        // Criar Carro Procedural
+        function createCar(color) {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshPhongMaterial({ color: color, emissive: color });
+            
+            // Base
+            const base = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 2), mat);
+            base.position.y = 0.2;
+            group.add(base);
+            
+            // Cabine
+            const cabin = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 1), mat);
+            cabin.position.y = 0.6;
+            group.add(cabin);
+            
+            return group;
+        }
+
+        // Setup Inicial
+        camera.position.set(0, 3, 7);
+        const grid = new THREE.GridHelper(200, 50, 0xffffff, 0x222222);
+        grid.position.z = -50;
+        scene.add(grid);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+        window.showSelection = () => { document.getElementById('menu').classList.add('hidden'); document.getElementById('selection').classList.remove('hidden'); };
+
+        window.startGame = (color) => {
+            player = createCar(color);
+            scene.add(player);
+            document.getElementById('selection').classList.add('hidden');
+            document.getElementById('ui').style.display = 'block';
+            isPlaying = true;
+            animate();
+        };
+
+        // Lógica de jogo
+        let moveLeft = false, moveRight = false;
+        document.addEventListener('keydown', (e) => {
+            if(e.key === 'ArrowLeft' || e.key === 'a') moveLeft = true;
+            if(e.key === 'ArrowRight' || e.key === 'd') moveRight = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            if(e.key === 'ArrowLeft' || e.key === 'a') moveLeft = false;
+            if(e.key === 'ArrowRight' || e.key === 'd') moveRight = false;
+        });
+
+        function animate() {
+            if(!isPlaying) return;
+            requestAnimationFrame(animate);
+
+            // Movimento
+            grid.position.z += speed;
+            if(grid.position.z > 0) grid.position.z = -50;
+            if(moveLeft && player.position.x > -8) player.position.x -= 0.2;
+            if(moveRight && player.position.x < 8) player.position.x += 0.2;
+
+            // Spawn Obstáculos
+            if(Math.random() < 0.05) {
+                const obs = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshPhongMaterial({ color: 0xff0000 }));
+                obs.position.set((Math.random()-0.5)*15, 1, -100);
+                scene.add(obs);
+                obstacles.push(obs);
+            }
+
+            obstacles.forEach((o, i) => {
+                o.position.z += speed;
+                if(player.position.distanceTo(o.position) < 1.5) {
+                    isPlaying = false;
+                    document.getElementById('game-over').classList.remove('hidden');
+                }
+                if(o.position.z > 5) { scene.remove(o); obstacles.splice(i, 1); score++; document.getElementById('score').innerText = score; }
+            });
+
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Quebra-Cabeça 40 Peças</title>
+    <style>
+        body { text-align: center; font-family: sans-serif; background: #f0f0f0; }
+        #canvas-container { margin-top: 20px; position: relative; }
+        canvas { border: 2px solid #333; background: #fff; cursor: grab; }
+        canvas:active { cursor: grabbing; }
+        .controls { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <h2>Quebra-Cabeça de 40 Peças (8x5)</h2>
+    <div class="controls">
+        <button onclick="embaralhar()">Embaralhar Peças</button>
+        <p>Arraste as peças para os lugares corretos!</p>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="puzzleCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('puzzleCanvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        // Configurações: 40 peças (8 colunas x 5 linhas)
+        const cols = 8;
+        const rows = 5;
+        let pieceWidth, pieceHeight;
+        let pieces = [];
+        let selectedPiece = null;
+        let offset = { x: 0, y: 0 };
+
+        // Carrega uma imagem de exemplo (pode trocar a URL se quiser)
+        img.src = 'https://picsum.photos/800/500'; 
+        img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            pieceWidth = canvas.width / cols;
+            pieceHeight = canvas.height / rows;
+            initPieces();
+            desenhar();
+        };
+
+        function initPieces() {
+            pieces = [];
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    pieces.push({
+                        sx: c * pieceWidth, // posição X original na imagem
+                        sy: r * pieceHeight, // posição Y original na imagem
+                        x: c * pieceWidth,  // posição X atual no canvas
+                        y: r * pieceHeight,  // posição Y atual no canvas
+                        correctX: c * pieceWidth,
+                        correctY: r * pieceHeight,
+                        isLocked: false
+                    });
+                }
+            }
+        }
+
+        function embaralhar() {
+            pieces.forEach(p => {
+                p.x = Math.random() * (canvas.width - pieceWidth);
+                p.y = Math.random() * (canvas.height - pieceHeight);
+                p.isLocked = false;
+            });
+            desenhar();
+        }
+
+        function desenhar() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Desenha o "tabuleiro" (guia suave)
+            ctx.globalAlpha = 0.1;
+            ctx.drawImage(img, 0, 0);
+            ctx.globalAlpha = 1.0;
+
+            pieces.forEach(p => {
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(p.x, p.y, pieceWidth, pieceHeight);
+                ctx.clip();
+                ctx.drawImage(img, p.sx, p.sy, pieceWidth, pieceHeight, p.x, p.y, pieceWidth, pieceHeight);
+                ctx.strokeRect(p.x, p.y, pieceWidth, pieceHeight); // Borda da peça
+                ctx.restore();
+            });
+        }
+
+        // Lógica de Arrastar e Soltar
+        canvas.onmousedown = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Pega a peça do topo (última do array)
+            for (let i = pieces.length - 1; i >= 0; i--) {
+                const p = pieces[i];
+                if (mouseX > p.x && mouseX < p.x + pieceWidth && mouseY > p.y && mouseY < p.y + pieceHeight) {
+                    selectedPiece = p;
+                    offset.x = mouseX - p.x;
+                    offset.y = mouseY - p.y;
+                    // Move para o final do array para ficar "por cima" visualmente
+                    pieces.splice(i, 1);
+                    pieces.push(selectedPiece);
+                    break;
+                }
+            }
+        };
+
+        window.onmousemove = (e) => {
+            if (!selectedPiece) return;
+            const rect = canvas.getBoundingClientRect();
+            selectedPiece.x = e.clientX - rect.left - offset.x;
+            selectedPiece.y = e.clientY - rect.top - offset.y;
+            desenhar();
+        };
+
+        window.onmouseup = () => {
+            if (selectedPiece) {
+                // "Magnetismo": se soltar perto da posição correta, ele encaixa
+                const threshold = 20;
+                if (Math.abs(selectedPiece.x - selectedPiece.correctX) < threshold && 
+                    Math.abs(selectedPiece.y - selectedPiece.correctY) < threshold) {
+                    selectedPiece.x = selectedPiece.correctX;
+                    selectedPiece.y = selectedPiece.correctY;
+                    selectedPiece.isLocked = true;
+                }
+            }
+            selectedPiece = null;
+            desenhar();
+        };
+    </script>
+</body>
+</html>
